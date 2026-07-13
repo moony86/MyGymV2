@@ -22,6 +22,7 @@ DEFAULT_EXERCISES = [
     ("Lat Pulldown", "back", "cable"),
     ("Seated Cable Row", "back", "cable"),
     ("Chest Supported Row", "back", "machine"),
+    ("Upper Back Row", "back", "machine"),  # أضف هذا السطر
     ("Pull Up", "back", "bodyweight"),
     ("Barbell Row", "back", "barbell"),
 
