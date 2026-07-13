@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MyGym Pro Core</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏋️ MyGym</h1>
+        </header>
+
+        <main>
+            <section id="active-section" class="card" style="display: none;">
+                <h2>⚡ الجلسة النشطة</h2>
+                <p class="session-time" id="active-time"></p>
+                <button class="btn-primary" onclick="router.navigate('workout')">استمرار التمرين</button>
+                <button class="btn-secondary" onclick="abandonActiveSession()">إنهاء بدون تسجيل</button>
+            </section>
+
+            <section class="card">
+                <h2>🚀 ابدأ تمرينًا جديدًا</h2>
+                <button class="btn-primary btn-large" onclick="startWorkout()">ابدأ تمرينًا</button>
+            </section>
+
+            <section class="card">
+                <h2>✓ آخر التمارين</h2>
+                <div id="history-list">
+                    <p class="text-muted">لا تمارين مسجلة بعد</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="snackbar" class="snackbar"></div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

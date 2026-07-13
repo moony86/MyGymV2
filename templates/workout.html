@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>تسجيل تمرين - MyGym</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <button class="btn-back" onclick="router.navigate('home')">← عودة</button>
+            <h1 id="session-title">جلسة جديدة</h1>
+            <span id="session-timer" class="timer">00:00</span>
+        </header>
+
+        <main>
+            <section class="card">
+                <div class="exercise-select">
+                    <label>التمرين</label>
+                    <select id="exercise-select">
+                        <option value="">اختر تمرين...</option>
+                    </select>
+                </div>
+
+                <div id="suggested-weight" class="suggested-box" style="display: none;">
+                    <span>المقترح:</span>
+                    <strong id="suggested-value">-</strong>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-group">
+                        <label>الوزن (كجم)</label>
+                        <input type="number" id="weight-input" step="0.1" inputmode="decimal" placeholder="0">
+                    </div>
+                    <div class="input-group">
+                        <label>العدات</label>
+                        <input type="number" id="reps-input" inputmode="numeric" placeholder="0">
+                    </div>
+                </div>
+
+                <div class="button-row">
+                    <button class="btn-secondary" onclick="repeatLastSet()">🔁 تكرار</button>
+                    <button class="btn-primary" onclick="addSet()">+ إضافة</button>
+                </div>
+            </section>
+
+            <section class="card">
+                <h2>المجموعات</h2>
+                <div id="sets-list">
+                    <p class="text-muted">لا توجد مجموعات بعد</p>
+                </div>
+                <div class="volume-bar">
+                    <span>الحجم الكلي:</span>
+                    <strong id="total-volume">0 كجم</strong>
+                </div>
+            </section>
+
+            <section class="card">
+                <button class="btn-danger btn-large" onclick="finishWorkout()">🔚 إنهاء التمرين</button>
+            </section>
+        </main>
+    </div>
+
+    <div id="snackbar" class="snackbar"></div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
