@@ -15,40 +15,43 @@
         </header>
 
         <main>
+            <!-- قسم اختيار التمرين وجدول الجلسات الديناميكي -->
             <section class="card">
                 <div class="exercise-select">
-                    <label>التمرين</label>
-                    <select id="exercise-select">
-                        <option value="">اختر تمرين...</option>
+                    <label>التمرين الحالي</label>
+                    <select id="exercise-select" onchange="handleExerciseChange()">
+                        <option value="">اختر تمرين للبدء...</option>
                     </select>
                 </div>
 
-                <div id="suggested-weight" class="suggested-box" style="display: none;">
-                    <span>المقترح:</span>
-                    <strong id="suggested-value">-</strong>
-                </div>
+                <!-- جدول الجلسات الديناميكي للتمرين المختار -->
+                <div id="dynamic-sets-section" style="display: none; margin-top: 20px;">
+                    <table class="sets-table" dir="rtl">
+                        <thead>
+                            <tr>
+                                <th>الجلسة</th>
+                                <th>الوزن (كجم)</th>
+                                <th>العدات</th>
+                                <th>إجراء</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dynamic-sets-body">
+                            <!-- الأسطر ستتولد هنا تلقائياً عبر الجافاسكربت -->
+                        </tbody>
+                    </table>
 
-                <div class="input-row">
-                    <div class="input-group">
-                        <label>الوزن (كجم)</label>
-                        <input type="number" id="weight-input" step="0.1" inputmode="decimal" placeholder="0">
+                    <div class="table-actions-row" style="margin-top: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <button class="btn-secondary" onclick="addNewSetRow()">➕ إضافة جلسة جديدة</button>
+                        <button class="btn-primary" id="lock-exercise-btn" style="background: #059669;" onclick="saveWholeExercise(this)">🔒 حفظ وقفل الجهاز</button>
                     </div>
-                    <div class="input-group">
-                        <label>العدات</label>
-                        <input type="number" id="reps-input" inputmode="numeric" placeholder="0">
-                    </div>
-                </div>
-
-                <div class="button-row">
-                    <button class="btn-secondary" onclick="repeatLastSet()">🔁 تكرار</button>
-                    <button class="btn-primary" onclick="addSet()">+ إضافة</button>
                 </div>
             </section>
 
+            <!-- سجل المجموعات المحفوظة خلال اليوم التدريبي الكامل -->
             <section class="card">
-                <h2>المجموعات</h2>
+                <h2>المجموعات المسجلة اليوم</h2>
                 <div id="sets-list">
-                    <p class="text-muted">لا توجد مجموعات بعد</p>
+                    <p class="text-muted">لا توجد مجموعات محفوظة في هذه الجلسة بعد</p>
                 </div>
                 <div class="volume-bar">
                     <span>الحجم الكلي:</span>
@@ -56,8 +59,11 @@
                 </div>
             </section>
 
-            <section class="card">
-                <button class="btn-danger btn-large" onclick="finishWorkout()">🔚 إنهاء التمرين</button>
+            <!-- إنهاء الحصة بالكامل -->
+            <section class="card" style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px; align-items: center;">
+                <button class="btn-primary" style="background: #10b981; padding: 14px; font-weight: bold; font-size: 1.1rem;" onclick="finishWorkout(this)">🔚 إنهاء وحفظ التمرين</button>
+
+                <button class="btn-danger" style="background: #dc2626; color: white; padding: 14px; font-size: 0.9rem; opacity: 0.9;" onclick="abandonActiveSession(this)">🗑️ حذف</button>
             </section>
         </main>
     </div>
