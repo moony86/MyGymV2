@@ -25,13 +25,32 @@
                 </button>
             </section>
 
-            <section class="card">
+            <section class="history-section">
                 <h2>✓ آخر التمارين</h2>
                 <div id="history-list">
-                    <p class="text-muted">لا تمارين مسجلة بعد</p>
                 </div>
             </section>
         </main>
+    </div>
+
+    <!-- ====== MODAL لعرض تفاصيل الجلسة ====== -->
+    <div id="history-modal" class="modal-overlay" style="display: none;" onclick="if(event.target===this) History.close()">
+        <div class="modal-content">
+            <header class="modal-header">
+                <h2 id="modal-session-title">جلسة</h2>
+                <button class="modal-close-btn" onclick="History.close()">✕</button>
+            </header>
+            <div id="modal-session-meta" class="modal-meta">
+                <span id="modal-session-date"></span>
+                <span id="modal-session-duration"></span>
+                <span id="modal-session-volume"></span>
+            </div>
+            <div id="modal-exercises-list" class="modal-exercises">
+                <!-- سيتم ملؤها بواسطة JS -->
+                <button class="btn-danger" style="margin-top: 12px;" onclick="History.deleteCurrentSession()">🗑️ حذف الجلسة</button>
+            </div>
+            <button class="btn-secondary modal-close-btn-bottom" onclick="History.close()">إغلاق</button>
+        </div>
     </div>
 
     <div id="snackbar" class="snackbar"></div>

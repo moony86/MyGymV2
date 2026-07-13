@@ -34,7 +34,8 @@ const API = {
     },
 
     async get(path) { return this.request(path, { method: 'GET' }); },
-    async post(path, body) { return this.request(path, { method: 'POST', body: JSON.stringify(body) }); }
+    async post(path, body) { return this.request(path, { method: 'POST', body: JSON.stringify(body) }); },
+    async delete(path) { return this.request(path, { method: 'DELETE' }); }
 };
 
 // 3️⃣ SESSION MANAGER (إدارة دورة حياة الجلسات الرياضية - السيرفر هو مصدر الحقيقة الكامل)
@@ -60,7 +61,6 @@ const SessionManager = {
         try {
             const data = await API.post('/workouts/start', { notes: "" });
             if (data && data.id) {
-                // اقتراحك الذكي: الباكيند هو مصدر الحقيقة، نستدعي restore لجلب الكائن كاملاً بدلاً من بنائه يدوياً
                 await this.restore();
                 UI.showSnackbar('🏋️‍♂️ تم بدء جلسة تدريبية جديدة، كفو!');
                 Router.workout();
@@ -157,7 +157,6 @@ const ExerciseManager = {
         let defaultReps = '';
         const rows = Array.from(tbody.rows);
 
-        // البحث العكسي الذكي عن آخر صف يحتوي على قيم مدخلة فعلاً
         for (let i = rows.length - 1; i >= 0; i--) {
             const wVal = rows[i].querySelector('.weight-input').value;
             const rVal = rows[i].querySelector('.reps-input').value;
@@ -222,11 +221,8 @@ const ExerciseManager = {
         try {
             for (const setData of setsData) {
                 const savedSet = await SessionManager.addSet(setData);
-                // تحديث الـ State المركزي فقط دون التدخل في الـ DOM مباشرة من هنا
                 state.workout.last_set = savedSet;
                 state.workout.sets.push(savedSet);
-
-                // نقوم بزيادة الـ volume في الـ State تحسباً لعدم استدعاء السيرفر مجدداً الآن
                 state.workout.total_volume += (setData.weight * setData.reps);
             }
 
@@ -234,7 +230,6 @@ const ExerciseManager = {
             select.value = '';
             document.getElementById('dynamic-sets-section').style.display = 'none';
 
-            // استدعاء إعادة الرسم الكامل والـ Single Source of Truth للصفحة بناءً على مقترحك العبقري
             UI.renderWorkoutPage();
 
         } catch (e) {
@@ -279,7 +274,6 @@ const UI = {
             titleEl.textContent = `جلسة • ${this.formatTime(state.workout.session.started_at)}`;
         }
 
-        // الحجم الكلي يُقرأ مباشرة من الحالة المركزية المستقرة المستمدة من السيرفر
         const volumeEl = document.getElementById('total-volume');
         if (volumeEl) {
             volumeEl.textContent = this.formatVolume(state.workout.total_volume);
@@ -288,10 +282,9 @@ const UI = {
         const list = document.getElementById('sets-list');
         if (!list) return;
 
-        list.innerHTML = ''; // تصفير كامل لإعادة الرسم الموحد والنظيف
+        list.innerHTML = '';
 
         if (state.workout.sets && state.workout.sets.length > 0) {
-            // استخدام appendChild لإظهار المجموعات بترتيبها الطبيعي المنسق من السيرفر دون عكس منطقي
             state.workout.sets.forEach(set => {
                 const row = document.createElement('div');
                 row.className = 'set-row';
@@ -308,7 +301,6 @@ const UI = {
         }
     },
 
-    // حل مشكلة 1: دالة تحميل ديناميكية تستقبل الزر المحدد بدقة لتغيير حالته وقفله وحمايته
     setButtonLoading(buttonEl, text, isLoading) {
         if (!buttonEl) return;
         buttonEl.disabled = isLoading;
@@ -357,7 +349,132 @@ const UI = {
         }
 };
 
-// 6️⃣ ROUTER LAYER
+// =================================================================
+// 🆕 6️⃣ HISTORY VIEWER (تمت إضافته لعرض تفاصيل الجلسات السابقة)
+// =================================================================
+const History = {
+    currentSessionId: null,  // لتخزين معرف الجلسة المعروضة
+
+    async open(sessionId) {
+        this.currentSessionId = sessionId;  // حفظ المعرف
+        try {
+            const data = await API.get(`/workouts/${sessionId}`);
+            this.renderModal(data);
+        } catch (e) {
+            UI.showSnackbar('فشل تحميل تفاصيل الجلسة', 'error');
+            console.error(e);
+        }
+    },
+
+    renderModal(data) {
+        const { session, sets, total_volume } = data;
+
+        const titleEl = document.getElementById('modal-session-title');
+        const dateEl = document.getElementById('modal-session-date');
+        const durationEl = document.getElementById('modal-session-duration');
+        const volumeEl = document.getElementById('modal-session-volume');
+
+        if (titleEl) {
+            const dateObj = new Date(session.started_at);
+            const dayName = dateObj.toLocaleDateString('ar-SA', { weekday: 'long' });
+            titleEl.textContent = `جلسة ${dayName}`;
+        }
+
+        if (dateEl) {
+            const d = new Date(session.started_at);
+            dateEl.textContent = d.toLocaleDateString('ar-SA', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+
+        if (durationEl) {
+            if (session.ended_at) {
+                const start = new Date(session.started_at);
+                const end = new Date(session.ended_at);
+                const diffSec = Math.floor((end - start) / 1000);
+                const hrs = Math.floor(diffSec / 3600);
+                const mins = Math.floor((diffSec % 3600) / 60);
+                let text = '';
+                if (hrs > 0) text += `${hrs} ساعة `;
+                text += `${mins} دقيقة`;
+                durationEl.textContent = `⏱️ ${text}`;
+            } else {
+                durationEl.textContent = '⏱️ غير معروف';
+            }
+        }
+
+        if (volumeEl) {
+            volumeEl.textContent = `🏋️ ${total_volume || 0} كجم`;
+        }
+
+        // تجميع المجموعات حسب اسم التمرين
+        const groups = {};
+        if (sets && sets.length) {
+            sets.forEach(set => {
+                const name = set.exercise_name || 'تمرين غير معروف';
+                if (!groups[name]) groups[name] = [];
+                groups[name].push({ weight: set.weight, reps: set.reps });
+            });
+        }
+
+        const container = document.getElementById('modal-exercises-list');
+        container.innerHTML = '';
+
+        if (Object.keys(groups).length === 0) {
+            container.innerHTML = '<p class="text-muted">لا توجد مجموعات مسجلة</p>';
+        } else {
+            for (const [exerciseName, setList] of Object.entries(groups)) {
+                const groupDiv = document.createElement('div');
+                groupDiv.className = 'modal-exercise-group';
+
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'modal-exercise-name';
+                nameDiv.textContent = exerciseName;
+                groupDiv.appendChild(nameDiv);
+
+                const setsDiv = document.createElement('div');
+                setsDiv.className = 'modal-exercise-sets';
+
+                setList.forEach((set) => {
+                    const item = document.createElement('div');
+                    item.className = 'modal-set-item';
+                    item.innerHTML = `
+                    <span class="modal-set-weight">${set.weight} كجم</span>
+                    <span class="modal-set-reps">× ${set.reps} عدات</span>
+                    `;
+                    setsDiv.appendChild(item);
+                });
+
+                groupDiv.appendChild(setsDiv);
+                container.appendChild(groupDiv);
+            }
+        }
+
+        document.getElementById('history-modal').style.display = 'flex';
+    },
+
+    close() {
+        document.getElementById('history-modal').style.display = 'none';
+    },
+
+    async deleteCurrentSession() {
+        if (!this.currentSessionId) return;
+        if (!confirm('هل أنت متأكد من حذف هذه الجلسة نهائياً؟')) return;
+        try {
+            await API.delete(`/workouts/${this.currentSessionId}`);
+            UI.showSnackbar('✅ تم حذف الجلسة بنجاح');
+            this.close();
+            loadHistory(); // إعادة تحميل القائمة
+        } catch (e) {
+            UI.showSnackbar('فشل حذف الجلسة', 'error');
+            console.error(e);
+        }
+    }
+};
+
+// 7️⃣ ROUTER LAYER
 const Router = {
     home() { if (window.location.pathname !== '/') window.location.href = '/'; },
     workout() { if (window.location.pathname !== '/workout') window.location.href = '/workout'; },
@@ -368,7 +485,7 @@ const Router = {
 };
 const router = Router;
 
-// 7️⃣ INTERACTION HANDLERS (مستقبلات الأحداث المحدثة لتمرير العناصر الحالية `this`)
+// 8️⃣ INTERACTION HANDLERS (مستقبلات الأحداث المحدثة لتمرير العناصر الحالية `this`)
 function handleMainButtonClick(btn) {
     if (state.workout && state.workout.session) {
         Router.workout();
@@ -381,12 +498,73 @@ async function abandonActiveSession(btn) {
     await SessionManager.abandon(btn);
 }
 
+// ⚠️ تم تعديل هذه الدالة (أضفنا onclick + مدة التمرين)
+async function loadHistory() {
+    const list = document.getElementById("history-list");
+    if (!list) return;
+
+    try {
+        const sessions = await API.get('/workouts/history');
+
+        if (!sessions.length) {
+            list.innerHTML = `
+            <div class="history-empty">
+            لا توجد تمارين سابقة
+            </div>
+            `;
+            return;
+        }
+
+        list.innerHTML = "";
+
+        sessions.forEach(session => {
+            const row = document.createElement("div");
+            row.className = "history-row";
+            // ✨ جعل البطاقة قابلة للضغط
+            row.onclick = () => History.open(session.id);
+
+            // حساب المدة إذا كانت منتهية
+            let durationText = '';
+            if (session.ended_at) {
+                const start = new Date(session.started_at);
+                const end = new Date(session.ended_at);
+                const diffMin = Math.floor((end - start) / 60000);
+                durationText = diffMin > 0 ? `${diffMin} دقيقة` : '< 1 دقيقة';
+            }
+
+            row.innerHTML = `
+            <div class="history-date">
+            ${new Date(session.started_at).toLocaleDateString("ar-SA")}
+            </div>
+            <div class="history-volume">
+            ${session.volume_kg || 0} كجم
+            </div>
+            <div class="history-sets">
+            ${session.sets_count || 0} مجموعات
+            ${durationText ? `<span style="font-size:0.8rem; color:#6b7280; margin-right:8px;">⏱️ ${durationText}</span>` : ''}
+            </div>
+            `;
+
+            list.appendChild(row);
+        });
+
+    } catch (err) {
+        console.error(err);
+
+        list.innerHTML = `
+        <div class="history-empty">
+        فشل تحميل السجل
+        </div>
+        `;
+    }
+}
+
 function handleExerciseChange() { ExerciseManager.handleChange(); }
 function addNewSetRow() { ExerciseManager.addNewRow(); }
 function saveWholeExercise(btn) { ExerciseManager.saveWholeExercise(btn); }
 function finishWorkout(btn) { SessionManager.finish(btn); }
 
-// 8️⃣ BOOTSTRAP (نقطة الدخول والتحميل المركزية الصلبة)
+// 9️⃣ BOOTSTRAP (نقطة الدخول والتحميل المركزية الصلبة)
 document.addEventListener('DOMContentLoaded', async () => {
     const path = window.location.pathname;
 
@@ -404,5 +582,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         UI.stopTimerDOM();
         await SessionManager.restore();
         UI.renderHome();
+        await loadHistory();
     }
 });

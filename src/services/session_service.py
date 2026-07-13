@@ -8,6 +8,7 @@ from sqlalchemy import and_, select
 from src.domain.entities import Session, PerformedExercise, Set, SetType, SessionStatus, utc_now
 from src.infrastructure.db.models import SessionTable, PerformedExerciseTable, SetTable, ExerciseTable
 from src.services.units_service import WeightFormatter
+from src.domain.entities import utc_now
 
 class SessionService:
     def __init__(self, db_session: DbSession):
@@ -29,6 +30,7 @@ class SessionService:
         orm_session = SessionTable(
             id=str(uuid6.uuid7()),
             status=SessionStatus.ACTIVE.value,
+            started_at=utc_now(),  # <-- أضف هذا
             notes=notes
         )
         self.db.add(orm_session)
@@ -161,6 +163,22 @@ class SessionService:
         results = self.db.execute(stmt).scalars().all()
         return [self._to_domain_session(s) for s in results]
 
+     # --- 7. استدعاء الجلسات (Abandon) ---
+    def get_completed_sessions(self, limit: int = 30):
+        stmt = (
+            select(SessionTable)
+            .where(SessionTable.status == SessionStatus.COMPLETED.value)
+            .order_by(SessionTable.started_at.desc())
+            .limit(limit)
+        )
+
+        return [
+            self._to_domain_session(session)
+            for session in self.db.execute(stmt).scalars().all()
+
+        ]
+
+
     def get_session_sets(self, session_id: uuid.UUID):
         stmt = (
             select(SetTable)
@@ -228,3 +246,24 @@ class SessionService:
         self.db.delete(orm_set)
         self.db.commit()
         return {"deleted": True}
+
+    def delete_session(self, session_id: uuid.UUID):
+        orm_session = self.db.query(SessionTable).filter(SessionTable.id == str(session_id)).first()
+        if not orm_session:
+            raise ValueError("Session not found.")
+    # إذا كانت العلاقات بها cascade، فقط احذف الجلسة
+        self.db.delete(orm_session)
+    # ولكن قد تحتاج إلى حذف PerformedExercise و Sets يدوياً إذا لم تكن cascade مضبوطة
+    # للتأكد، يمكننا حذفها يدوياً:
+        performed_exercises = self.db.query(PerformedExerciseTable).filter(
+            PerformedExerciseTable.session_id == str(session_id)
+        ).all()
+        for pe in performed_exercises:
+        # حذف الـ Sets المرتبطة
+            self.db.query(SetTable).filter(SetTable.performed_exercise_id == pe.id).delete()
+    # حذف PerformedExercise
+        self.db.query(PerformedExerciseTable).filter(
+            PerformedExerciseTable.session_id == str(session_id)
+        ).delete()
+    # ثم حذف Session
+        self.db.delete(orm_session)

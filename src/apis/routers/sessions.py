@@ -18,6 +18,11 @@ router = APIRouter(prefix="/api", tags=["workouts"])
 
 def session_to_dto(session: Session, sets: List[Set], exercise_names: dict = None) -> SessionDTO:
     volume = sum((s.weight * s.reps for s in sets), Decimal("0"))
+    duration_minutes = None
+    if session.ended_at and session.started_at:
+        delta = session.ended_at - session.started_at
+        duration_minutes = int(delta.total_seconds() // 60)
+
     return SessionDTO(
         id=str(session.id),
         status=session.status,
@@ -25,7 +30,8 @@ def session_to_dto(session: Session, sets: List[Set], exercise_names: dict = Non
         ended_at=session.ended_at,
         notes=session.notes,
         volume_kg=volume,
-        sets_count=len(sets)
+        sets_count=len(sets),
+        duration_minutes=duration_minutes
     )
 
 def set_to_dto(orm_set, exercise_name: str = "") -> SetDTO:
@@ -40,6 +46,7 @@ def set_to_dto(orm_set, exercise_name: str = "") -> SetDTO:
         set_type=SetType(orm_set.set_type),
         volume_kg=orm_set.weight * orm_set.reps
     )
+
 
 @router.post("/workouts/start", response_model=SessionDTO)
 def start_workout(req: StartWorkoutRequest):
@@ -88,6 +95,25 @@ def get_active_workout():
             last_set=last_set_dto,
             total_volume=total_volume
         )
+    finally:
+        db.close()
+
+@router.get("/workouts/history", response_model=list[SessionDTO])
+def get_workout_history():
+    db = SessionLocal()
+    try:
+        service = SessionService(db)
+
+        sessions = service.get_completed_sessions()
+
+        result = []
+
+        for session in sessions:
+            sets = service.get_session_sets(session.id)
+            result.append(session_to_dto(session, sets))
+
+        return result
+
     finally:
         db.close()
 
@@ -243,5 +269,19 @@ def get_last_set(session_id: str, exercise_id: str):
                 exercise_name = ex.name
         
         return set_to_dto(orm_set, exercise_name)
+    finally:
+        db.close()
+
+@router.delete("/workouts/{session_id}", response_model=MessageResponse)
+def delete_workout(session_id: str):
+    db = SessionLocal()
+    try:
+        service = SessionService(db)
+        service.delete_session(uuid.UUID(session_id))
+        db.commit()
+        return MessageResponse(message="تم حذف الجلسة بنجاح")
+    except ValueError as e:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     finally:
         db.close()
