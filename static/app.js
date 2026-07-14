@@ -571,13 +571,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (path === '/workout') {
         await ExerciseManager.loadExercises();
         const sessionData = await SessionManager.restore();
-
-        if (sessionData) {
-            UI.renderWorkoutPage();
-        } else {
-            UI.showSnackbar('لا توجد جلسة نشطة قائمة حالياً بالسيرفر، تحويل للرئيسية...', 'error');
-            setTimeout(() => Router.home(), 1000);
-        }
+		
+		
+		 const params = new URLSearchParams(window.location.search);
+		 const planId = params.get('plan_id');
+		 
+		if (planId) {
+			// بدء جلسة مخططة
+			await PlannedSession.init(planId);
+			
+		} else if (sessionData) {
+			UI.renderWorkoutPage();
+		} else {
+			UI.showSnackbar('لا توجد جلسة نشطة، تحويل للرئيسية...', 'error');
+			setTimeout(() => Router.home(), 1000);
+		}
+			    
     } else {
         UI.stopTimerDOM();
         await SessionManager.restore();
@@ -585,3 +594,153 @@ document.addEventListener('DOMContentLoaded', async () => {
         await loadHistory();
     }
 });
+
+// ====== ========================= ======
+// ====== PLANNED SESSION EXECUTION ======
+// ====== ========================= ======
+
+const PlannedSession = {
+    sessionId: null,
+    exercises: [],      // قائمة التمارين المخططة (مع الحالة)
+    currentIndex: 0,
+    isActive: false,
+
+    async init(planId) {
+        try {
+            const response = await fetch(`/api/planner/plans/${planId}/start`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notes: "" })
+            });
+            if (!response.ok) throw new Error('Failed to start planned session');
+            const data = await response.json();
+            this.sessionId = data.session_id;
+            this.exercises = data.planned_exercises.map((ex, idx) => ({
+                ...ex,
+                is_completed: false,
+            }));
+            this.currentIndex = 0;
+            this.isActive = true;
+            // تحديث حالة الجلسة النشطة
+            await SessionManager.restore();
+            this.renderUI();
+            this.startCurrentExercise();
+        } catch (e) {
+            UI.showSnackbar('فشل بدء الخطة: ' + e.message, 'error');
+        }
+    },
+
+    renderUI() {
+        const plannedSection = document.getElementById('planned-section');
+        const freeSection = document.getElementById('free-section');
+        plannedSection.style.display = 'block';
+        freeSection.style.display = 'none';
+
+        const nameDisplay = document.getElementById('plan-name-display');
+        nameDisplay.textContent = `📋 الخطة: ${this.exercises[0]?.name ? 'جلسة مخططة' : ''}`;
+
+        const list = document.getElementById('planned-exercises-list');
+        list.innerHTML = '';
+        this.exercises.forEach((ex, idx) => {
+            const div = document.createElement('div');
+            div.className = 'planned-exercise-item';
+            div.style.cssText = `
+                display: flex; justify-content: space-between; align-items: center;
+                padding: 12px; margin-bottom: 8px; border-radius: 8px;
+                background: ${idx === this.currentIndex ? '#eff6ff' : idx < this.currentIndex ? '#f0fdf4' : '#f9fafb'};
+                border: ${idx === this.currentIndex ? '2px solid #2563eb' : '1px solid #e5e7eb'};
+                cursor: ${idx === this.currentIndex ? 'pointer' : 'default'};
+            `;
+            const statusIcon = idx < this.currentIndex ? '✅' : (idx === this.currentIndex ? '▶️' : '⬜');
+            div.innerHTML = `
+                <span><strong>${statusIcon} ${ex.name}</strong> (${ex.target_sets || '?'} مجموعات${ex.target_reps ? ` × ${ex.target_reps}` : ''})</span>
+                <span style="font-size:0.85rem; color:#6b7280;">${idx < this.currentIndex ? 'منتهي' : (idx === this.currentIndex ? 'الحالي' : 'قادم')}</span>
+            `;
+            if (idx === this.currentIndex) {
+                div.onclick = () => this.startCurrentExercise();
+            }
+            list.appendChild(div);
+        });
+        UI.renderWorkoutPage();
+    },
+
+    startCurrentExercise() {
+        if (this.currentIndex >= this.exercises.length) {
+            UI.showSnackbar('🎉 انتهيت من جميع التمارين!', 'success');
+            return;
+        }
+        const ex = this.exercises[this.currentIndex];
+        const exerciseId = ex.exercise_id;
+        const suggestedWeight = ex.suggested_weight;
+        const suggestedReps = ex.suggested_reps;
+
+        // تعبئة select والجدول
+        const select = document.getElementById('exercise-select');
+        select.value = exerciseId;
+        ExerciseManager.handleChange();
+
+        const rows = document.querySelectorAll('#dynamic-sets-body tr');
+        if (suggestedWeight !== null && suggestedWeight !== undefined) {
+            rows.forEach(row => {
+                row.querySelector('.weight-input').value = suggestedWeight;
+                row.querySelector('.reps-input').value = suggestedReps || '';
+            });
+        } else {
+            rows.forEach(row => {
+                row.querySelector('.weight-input').value = '';
+                row.querySelector('.reps-input').value = '';
+            });
+        }
+        // عرض عدد المجموعات المخطط له (اختياري)
+        if (ex.target_sets) {
+            // نضبط عدد الصفوف حسب target_sets
+            const tbody = document.getElementById('dynamic-sets-body');
+            const currentRows = tbody.rows.length;
+            if (currentRows < ex.target_sets) {
+                for (let i = currentRows; i < ex.target_sets; i++) ExerciseManager.addNewRow();
+            } else if (currentRows > ex.target_sets) {
+                for (let i = currentRows; i > ex.target_sets; i--) tbody.deleteRow(i-1);
+            }
+            ExerciseManager.reindexRows();
+        }
+        UI.showSnackbar(`🏋️ ابدأ: ${ex.name}`, 'info');
+    },
+
+    async completeCurrentExercise() {
+        this.exercises[this.currentIndex].is_completed = true;
+        this.currentIndex++;
+        if (this.currentIndex < this.exercises.length) {
+            this.renderUI();
+            this.startCurrentExercise();
+        } else {
+            this.renderUI();
+            UI.showSnackbar('🎉 أكملت الخطة بنجاح!', 'success');
+        }
+    },
+
+    cancel() {
+        if (!confirm('هل تريد إلغاء الخطة والعودة للوضع الحر؟')) return;
+        this.isActive = false;
+        this.exercises = [];
+        this.currentIndex = 0;
+        document.getElementById('planned-section').style.display = 'none';
+        document.getElementById('free-section').style.display = 'block';
+        document.getElementById('session-title').textContent = 'جلسة جديدة';
+        document.getElementById('exercise-select').value = '';
+        document.getElementById('dynamic-sets-section').style.display = 'none';
+        UI.renderWorkoutPage();
+    }
+};
+
+// تعديل saveWholeExercise لتستدعي completeCurrentExercise في حالة الخطة
+const originalSave = saveWholeExercise;
+saveWholeExercise = async function(btn) {
+    await originalSave(btn);
+    if (PlannedSession.isActive) {
+        await PlannedSession.completeCurrentExercise();
+    }
+};
+
+function cancelPlannedSession() {
+    PlannedSession.cancel();
+}

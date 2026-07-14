@@ -17,12 +17,20 @@
         <main>
             <!-- قسم اختيار التمرين وجدول الجلسات الديناميكي -->
             <section class="card">
-                <div class="exercise-select">
+                <section id="free-section" class="card">
                     <label>التمرين الحالي</label>
                     <select id="exercise-select" onchange="handleExerciseChange()">
                         <option value="">اختر تمرين للبدء...</option>
                     </select>
                 </div>
+				<!-- قسم تنفيذ الخطة -->
+				<section id="planned-section" class="card" style="display: none;">
+					<h2 id="plan-name-display">📋 الخطة: </h2>
+					<div id="planned-exercises-list"></div>
+					<div style="margin-top: 16px; display: flex; gap: 12px;">
+						<button class="btn-secondary" onclick="cancelPlannedSession()">🔙 إلغاء الخطة</button>
+					</div>
+				</section>
 
                 <!-- جدول الجلسات الديناميكي للتمرين المختار -->
                 <div id="dynamic-sets-section" style="display: none; margin-top: 20px;">

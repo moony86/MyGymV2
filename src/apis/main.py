@@ -10,6 +10,8 @@ from src.apis.routers.exercises import router as exercises_router
 from src.infrastructure.db.models import Base, ExerciseTable
 from src.infrastructure.db.connection import engine, SessionLocal
 
+from src.apis.routers.planner import router as planner_router
+
 DEFAULT_EXERCISES = [
     # Chest
     ("Chest Press (Machine)", "chest", "machine"),
@@ -50,6 +52,18 @@ DEFAULT_EXERCISES = [
     ("Skull Crusher", "triceps", "barbell"),
 ]
 Base.metadata.create_all(engine)
+
+def upgrade_database_for_planner():
+    from sqlalchemy import inspect
+    inspector = inspect(engine)
+    if "workout_plans" not in inspector.get_table_names():
+        print("Creating planner tables...")
+        Base.metadata.create_all(engine)
+        print("Planner tables created.")
+    else:
+        print("Planner tables already exist.")
+
+upgrade_database_for_planner()
 
 def seed_default_exercises():
     from sqlalchemy.orm import Session as DbSession
@@ -111,6 +125,8 @@ app.add_middleware(
 app.include_router(sessions_router)
 app.include_router(exercises_router)
 
+app.include_router(planner_router)
+
 static_dir = os.path.join(os.path.dirname(__file__), "..", "..", "static")
 if os.path.exists(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
@@ -123,6 +139,10 @@ async def root():
 async def workout_page():
     return FileResponse(os.path.join(os.path.dirname(__file__), "..", "..", "templates", "workout.html"))
 
+@app.get("/plans")
+async def plans_page():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "..", "..", "templates", "plans.html"))
+    
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
