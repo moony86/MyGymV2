@@ -1,5 +1,6 @@
-__pycache__/ 
-.pytest_cache/ 
-*.db 
-*.db-shm 
-*.db-wal 
+venv/
+*.db
+*.db-shm
+*.db-wal
+__pycache__/
+.pytest_cache/
