@@ -818,3 +818,8 @@ const PlannedSession = {
 function cancelPlannedSession() {
     PlannedSession.cancel();
 }
+
+// التنبيه عند انقطاع الاتصال
+window.addEventListener('offline', () => {
+    alert("⚠️ لقد فقدت الاتصال بالسيرفر! تأكد من تشغيل الـ VPN.");
+});
