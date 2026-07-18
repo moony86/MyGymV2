@@ -29,6 +29,7 @@ def session_to_dto(session: Session, sets: List[Set], exercise_names: dict = Non
         started_at=session.started_at,
         ended_at=session.ended_at,
         notes=session.notes,
+        plan_id=str(session.plan_id) if session.plan_id else None,
         volume_kg=volume,
         sets_count=len(sets),
         duration_minutes=duration_minutes
@@ -70,33 +71,74 @@ def get_active_workout():
         session = service.get_active_session()
         if not session:
             return ActiveSessionDTO(session=None, sets=[], last_set=None, total_volume=Decimal("0"))
-        
+
         orm_sets = service.get_session_sets(session.id)
-        
+
         exercise_names = {}
         for orm_set in orm_sets:
-            pe = db.query(PerformedExerciseTable).filter(PerformedExerciseTable.id == orm_set.performed_exercise_id).first()
+            # تأكد أننا نحول الـ ID إلى نص قبل المقارنة
+            p_id = str(orm_set.performed_exercise_id)
+            pe = db.query(PerformedExerciseTable).filter(PerformedExerciseTable.id == p_id).first()
             if pe:
-                ex = db.query(ExerciseTable).filter(ExerciseTable.id == pe.exercise_id).first()
+                ex = db.query(ExerciseTable).filter(ExerciseTable.id == str(pe.exercise_id)).first()
                 if ex:
-                    exercise_names[str(orm_set.performed_exercise_id)] = ex.name
-        
+                    exercise_names[p_id] = ex.name
+
         sets_dto = [set_to_dto(s, exercise_names.get(str(s.performed_exercise_id), "")) for s in orm_sets]
         total_volume = sum((s.volume_kg for s in sets_dto), Decimal("0"))
-        
+
         last_set_dto = None
         if orm_sets:
             last_set = orm_sets[-1]
             last_set_dto = set_to_dto(last_set, exercise_names.get(str(last_set.performed_exercise_id), ""))
-        
+
         return ActiveSessionDTO(
             session=session_to_dto(session, orm_sets),
             sets=sets_dto,
             last_set=last_set_dto,
             total_volume=total_volume
         )
+    except Exception as e:
+        # أضفنا هذا لالتقاط الخطأ الحقيقي
+        print(f"DEBUG ERROR: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         db.close()
+
+#@router.get("/workouts/active", response_model=ActiveSessionDTO)
+#def get_active_workout():
+#    db = SessionLocal()
+#    try:
+#        service = SessionService(db)
+#        session = service.get_active_session()
+#        if not session:
+#            return ActiveSessionDTO(session=None, sets=[], last_set=None, total_volume=Decimal("0"))
+#
+#        orm_sets = service.get_session_sets(session.id)
+#
+#        exercise_names = {}
+#        for orm_set in orm_sets:
+#            pe = db.query(PerformedExerciseTable).filter(PerformedExerciseTable.id == orm_set.performed_exercise_id).first()
+#            if pe:
+#                ex = db.query(ExerciseTable).filter(ExerciseTable.id == pe.exercise_id).first()
+#                if ex:
+#                    exercise_names[str(orm_set.performed_exercise_id)] = ex.name
+#
+#        sets_dto = [set_to_dto(s, exercise_names.get(str(s.performed_exercise_id), "")) for s in orm_sets]
+#        total_volume = sum((s.volume_kg for s in sets_dto), Decimal("0"))
+#
+#        if orm_sets:
+#            last_set = orm_sets[-1]
+#            last_set_dto = set_to_dto(last_set, exercise_names.get(str(last_set.performed_exercise_id), ""))
+#
+#        return ActiveSessionDTO(
+#            session=session_to_dto(session, orm_sets),
+#            sets=sets_dto,
+#            last_set=last_set_dto,
+#            total_volume=total_volume
+#        )
+#    finally:
+#        db.close()
 
 @router.get("/workouts/history", response_model=list[SessionDTO])
 def get_workout_history():

@@ -334,6 +334,41 @@ def start_planned_session(plan_id: str, notes: Optional[str] = None):
         db.close()
 
 
+@router.get("/sessions/{session_id}/progress", response_model=StartPlanResponse)
+def get_session_plan_progress(session_id: str):
+    """
+    تُستخدم لاستئناف جلسة مخططة نشطة بعد تحديث الصفحة أو إغلاق التطبيق:
+    ترجع نفس شكل استجابة /start، لكن مع is_completed محسوبة فعلياً من
+    الـ Sets المسجلة في هذه الجلسة، دون إنشاء أي جلسة جديدة.
+    """
+    db = SessionLocal()
+    try:
+        service = PlannerService(db)
+        result = service.get_session_plan_progress(session_id)
+        return StartPlanResponse(
+            session_id=result["session_id"],
+            planned_exercises=[
+                PlannedExercise(
+                    plan_exercise_id=ex["plan_exercise_id"],
+                    exercise_id=ex["exercise_id"],
+                    name=ex["name"],
+                    order=ex["order"],
+                    target_sets=ex["target_sets"],
+                    target_reps=ex["target_reps"],
+                    suggested_weight=float(ex["suggested_weight"]) if ex["suggested_weight"] is not None else None,
+                    suggested_reps=ex["suggested_reps"],
+                    rest_seconds=ex["rest_seconds"],
+                    is_completed=ex["is_completed"],
+                )
+                for ex in result["planned_exercises"]
+            ]
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    finally:
+        db.close()
+
+
 # ========== البدائل ==========
 
 @router.get("/exercises/{exercise_id}/alternatives", response_model=List[AlternativeResponse])

@@ -34,11 +34,15 @@ class SessionTable(Base):
     __tablename__ = "sessions"
 
     id = Column(TEXT, primary_key=True, default=lambda: str(uuid6.uuid7()))
+
+    plan_id = Column(TEXT, ForeignKey("workout_plans.id", ondelete="SET NULL"),nullable=True)
+
+    plan = relationship("WorkoutPlanTable", back_populates="sessions")
+
     status = Column(String(20), nullable=False, default=SessionStatus.ACTIVE.value)
     started_at = Column(DateTime, nullable=False, default=utc_now)
     ended_at = Column(DateTime, nullable=True)
     notes = Column(Text)
-
     # العلاقات
     performed_exercises = relationship("PerformedExerciseTable", back_populates="session", cascade="all, delete-orphan")
 
@@ -102,6 +106,7 @@ class WorkoutPlanTable(Base):
     # العلاقات
     plan_exercises = relationship("PlanExerciseTable", back_populates="plan", cascade="all, delete-orphan")
     schedules = relationship("PlanScheduleTable", back_populates="plan", cascade="all, delete-orphan")
+    sessions = relationship("SessionTable",back_populates="plan")
 
     __table_args__ = (
         Index('ix_workout_plans_name', 'name'),

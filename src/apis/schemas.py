@@ -30,6 +30,8 @@ class SessionDTO(BaseModel):
     started_at: datetime
     ended_at: Optional[datetime] = None
     notes: Optional[str] = None
+    plan_id: Optional[str] = None
+
     volume_kg: Decimal = Decimal("0")
     sets_count: int = 0
     duration_minutes: Optional[int] = None
