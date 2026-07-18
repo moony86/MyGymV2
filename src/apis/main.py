@@ -11,6 +11,10 @@ from src.infrastructure.db.models import Base, ExerciseTable
 from src.infrastructure.db.connection import engine, SessionLocal
 
 from src.apis.routers.planner import router as planner_router
+# أضف هذه الاستيرادات في الأعلى
+from alembic.config import Config
+from alembic import command
+
 
 DEFAULT_EXERCISES = [
     # Chest
@@ -51,19 +55,18 @@ DEFAULT_EXERCISES = [
     ("Triceps Extension (Machine)", "triceps", "machine"),
     ("Skull Crusher", "triceps", "barbell"),
 ]
-Base.metadata.create_all(engine)
 
-def upgrade_database_for_planner():
-    from sqlalchemy import inspect
-    inspector = inspect(engine)
-    if "workout_plans" not in inspector.get_table_names():
-        print("Creating planner tables...")
-        Base.metadata.create_all(engine)
-        print("Planner tables created.")
-    else:
-        print("Planner tables already exist.")
+def run_migrations():
+    """تشغيل الترحيلات تلقائياً عند بدء التشغيل"""
+    # المسار الخاص بملف alembic.ini في مشروعك
+    alembic_cfg = Config("alembic.ini")
+    try:
+        command.upgrade(alembic_cfg, "head")
+        print("Database migrations applied successfully.")
+    except Exception as e:
+        print(f"Error applying migrations: {e}")
 
-upgrade_database_for_planner()
+# استدعِ الدالة قبل تهيئة FastAPI
 
 def seed_default_exercises():
     from sqlalchemy.orm import Session as DbSession
@@ -75,7 +78,7 @@ def seed_default_exercises():
             for row in db.query(ExerciseTable.name).all()
         }
         added = 0
-        
+
         for name, primary_muscle, equipment in DEFAULT_EXERCISES:
             if name in existing_names:
                 continue
@@ -89,11 +92,11 @@ def seed_default_exercises():
                     is_active=True,
                 )
             )
-            
+
             added +=1
-            
+
         db.commit()
-        
+
         if added:
             print(f"Added {added} new exercises.")
         else:
@@ -105,8 +108,26 @@ def seed_default_exercises():
         db.close()
 
 
+
 if os.getenv("PYTEST_CURRENT_TEST") is None:
-    seed_default_exercises()
+    run_migrations()
+    seed_default_exercises() # تظل موجودة لأنها تملأ البيانات (Seeding) وليس الهيكلية
+
+
+#Base.metadata.create_all(engine)
+
+#def upgrade_database_for_planner():
+#    from sqlalchemy import inspect
+#    inspector = inspect(engine)
+#    if "workout_plans" not in inspector.get_table_names():
+#        print("Creating planner tables...")
+#        Base.metadata.create_all(engine)
+#        print("Planner tables created.")
+#    else:
+#        print("Planner tables already exist.")
+
+#upgrade_database_for_planner()
+
 
 app = FastAPI(
     title="MyGym Pro Core",

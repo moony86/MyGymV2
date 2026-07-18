@@ -266,7 +266,10 @@ class PlannerService:
             raise ValueError("Plan not found or empty")
 
         # 1. إنشاء جلسة فارغة
-        session = self.session_service.create_session(notes=notes)
+        session = self.session_service.create_session(
+            notes=notes,
+            plan_id=plan_id
+        )
 
         # 2. إضافة تمارين PerformedExercise بالترتيب
         exercises = plan_data["exercises"]
@@ -312,6 +315,62 @@ class PlannerService:
             "planned_exercises": planned_exercises,
         }
 
+    def get_session_plan_progress(self, session_id: str) -> Dict[str, Any]:
+        """
+        ترجع تفاصيل الخطة المرتبطة بجلسة نشطة (أو أي جلسة)، مع حالة إنجاز
+        كل تمرين محسوبة من الـ Sets المسجلة فعلياً في هذه الجلسة.
+        تُستخدم لاستئناف جلسة مخططة بعد تحديث الصفحة / إغلاق التطبيق دون
+        فقدان تقدم المستخدم.
+        """
+        session = self.db.query(SessionTable).filter(SessionTable.id == session_id).first()
+        if not session:
+            raise ValueError("Session not found")
+        if not session.plan_id:
+            raise ValueError("This session is not linked to any plan")
+
+        plan_data = self.get_plan_with_details(session.plan_id)
+        if not plan_data:
+            raise ValueError("Plan not found")
+
+        # التمارين التي سُجلت لها مجموعة واحدة على الأقل ضمن هذه الجلسة
+        completed_exercise_ids = set(
+            row[0] for row in (
+                self.db.query(PerformedExerciseTable.exercise_id)
+                .join(SetTable, SetTable.performed_exercise_id == PerformedExerciseTable.id)
+                .filter(PerformedExerciseTable.session_id == session_id)
+                .distinct()
+                .all()
+            )
+        )
+
+        exercises = plan_data["exercises"]
+        planned_exercises = []
+        for idx, pe in enumerate(exercises):
+            is_completed = pe.exercise_id in completed_exercise_ids
+            suggestion = self._get_suggestion(
+                pe.exercise_id,
+                pe.target_weight_mode,
+                pe.fixed_weight,
+                pe.fixed_reps
+            )
+            planned_exercises.append({
+                "plan_exercise_id": pe.id,
+                "exercise_id": pe.exercise_id,
+                "name": plan_data["exercise_names"].get(pe.exercise_id, "Unknown"),
+                "order": idx,
+                "target_sets": pe.target_sets,
+                "target_reps": pe.target_reps,
+                "suggested_weight": suggestion["weight"],
+                "suggested_reps": suggestion["reps"],
+                "rest_seconds": pe.rest_seconds,
+                "is_completed": is_completed,
+            })
+
+        return {
+            "session_id": session_id,
+            "planned_exercises": planned_exercises,
+        }
+
     def _get_last_set_for_exercise(self, exercise_id: str):
         """ترجع آخر مجموعة مسجلة لهذا التمرين من جلسة مكتملة."""
         subquery = (
@@ -351,15 +410,11 @@ class PlannerService:
 
     def get_plan_history(self, plan_id: str, limit: int = 20):
         """ترجع قائمة الجلسات التي تمت باستخدام هذه الخطة."""
-        # نحتاج إلى ربط الجلسة بالخطة، يمكن إضافة عمود plan_id في SessionTable
-        # أو الاعتماد على notes، لكن الأفضل إضافة عمود لاحقاً.
-        # حالياً نرجع قائمة الجلسات التي تحتوي على تمرين من هذه الخطة (تقريبي)
         plan_exercises = self.get_plan_exercises(plan_id)
         exercise_ids = [pe.exercise_id for pe in plan_exercises]
         if not exercise_ids:
             return []
 
-        # نبحث عن جلسات تحتوي على هذه التمارين
         subquery = (
             select(PerformedExerciseTable.session_id)
             .where(PerformedExerciseTable.exercise_id.in_(exercise_ids))

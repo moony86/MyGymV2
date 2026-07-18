@@ -38,6 +38,7 @@ class Session(BaseModel):
     started_at: datetime = Field(default_factory=utc_now)
     ended_at: Optional[datetime] = None
     notes: Optional[str] = None
+    plan_id: Optional[uuid.UUID] = None
 
     @field_validator('status', mode='before')
     @classmethod

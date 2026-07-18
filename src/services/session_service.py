@@ -22,7 +22,11 @@ class SessionService:
         return Set.model_validate(orm_set, from_attributes=True)
 
     # --- 1. بدء جلسة جديدة ---
-    def create_session(self, notes: Optional[str] = None) -> Session:
+    def create_session(
+        self,
+        notes: Optional[str] = None,
+        plan_id: Optional[str] = None
+    ) -> Session:
         active = self.db.query(SessionTable).filter(SessionTable.status == SessionStatus.ACTIVE.value).first()
         if active:
             raise ValueError("Cannot create new session. An ACTIVE session already exists. Please finish or abandon it first.")
@@ -31,7 +35,9 @@ class SessionService:
             id=str(uuid6.uuid7()),
             status=SessionStatus.ACTIVE.value,
             started_at=utc_now(),  # <-- أضف هذا
-            notes=notes
+            notes=notes,
+            plan_id=plan_id
+
         )
         self.db.add(orm_session)
         self.db.commit()
