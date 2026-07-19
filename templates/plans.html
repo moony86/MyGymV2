@@ -20,6 +20,7 @@
         .input-group { margin-bottom: 12px; }
         .input-group label { display: block; font-size: 0.9rem; font-weight: 500; margin-bottom: 4px; }
         .input-group input, .input-group select { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; }
+        .btn-secondary.btn-small.edit-btn { background: #f59e0b; color: white; }
     </style>
 </head>
 <body>
@@ -41,14 +42,14 @@
         </main>
     </div>
 
-    <!-- مودال إنشاء خطة -->
+    <!-- مودال إنشاء / تعديل خطة (نفس المودال لكليهما) -->
     <div id="create-plan-modal" class="modal-overlay" style="display: none;" onclick="if(event.target===this) closeModal('create-plan-modal')">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>خطة جديدة</h2>
+                <h2 id="plan-modal-title">خطة جديدة</h2>
                 <button class="modal-close" onclick="closeModal('create-plan-modal')">✕</button>
             </div>
-            <form id="create-plan-form" onsubmit="createPlan(event)">
+            <form id="create-plan-form" onsubmit="submitPlanForm(event)">
                 <div class="input-group">
                     <label>اسم الخطة</label>
                     <input type="text" id="plan-name" required placeholder="مثال: Push Day">
@@ -79,7 +80,7 @@
                         <label style="display: none;" id="fixed-weight-label">الوزن: <input type="number" id="form-fixed-weight" step="0.5" style="width: 60px; padding: 4px;"></label>
                     </div>
                 </div>
-                <button type="submit" class="btn-primary" style="margin-top: 20px;">💾 حفظ الخطة</button>
+                <button type="submit" class="btn-primary" style="margin-top: 20px;" id="plan-modal-submit-btn">💾 حفظ الخطة</button>
             </form>
         </div>
     </div>
@@ -90,6 +91,7 @@
         const API_BASE = '/api/planner';
         let allExercises = [];
         let formExercises = [];
+        let editingPlanId = null; // null = إنشاء خطة جديدة، غير ذلك = تعديل خطة موجودة
 
         async function apiRequest(path, options = {}) {
             const url = `${API_BASE}${path}`;
@@ -150,6 +152,7 @@
                         <div class="plan-exercises">${exNames || 'لا توجد تمارين'}</div>
                         <div class="flex-row" style="margin-top:10px;">
                             <button class="btn-primary btn-small" onclick="startPlan('${plan.id}')">▶ ابدأ</button>
+                            <button class="btn-secondary btn-small edit-btn" onclick="showEditPlanModal('${plan.id}')">✏️ تعديل</button>
                             <button class="btn-danger btn-small" onclick="deletePlan('${plan.id}')">🗑️ حذف</button>
                         </div>
                     `;
@@ -161,7 +164,6 @@
         }
 
         function startPlan(planId) {
-            // نبدأ جلسة مخططة
             window.location.href = `/workout?plan_id=${planId}`;
         }
 
@@ -178,17 +180,62 @@
 
         // ====== مودال إنشاء خطة ======
         function showCreatePlanModal() {
-            document.getElementById('create-plan-modal').style.display = 'flex';
+            editingPlanId = null;
+            document.getElementById('plan-modal-title').textContent = 'خطة جديدة';
+            document.getElementById('plan-modal-submit-btn').textContent = '💾 حفظ الخطة';
+            document.getElementById('create-plan-form').reset();
+            document.getElementById('plan-name').value = '';
+            document.getElementById('plan-description').value = '';
             formExercises = [];
             renderFormExercises();
+            document.getElementById('create-plan-modal').style.display = 'flex';
             if (!allExercises.length) loadExercises();
             populateSelects();
-            document.getElementById('form-weight-mode').addEventListener('change', function() {
-                document.getElementById('fixed-weight-label').style.display = this.value === 'FIXED' ? 'inline' : 'none';
-            });
+            bindWeightModeListener();
         }
 
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        // ====== مودال تعديل خطة ======
+        async function showEditPlanModal(planId) {
+            try {
+                if (!allExercises.length) await loadExercises();
+                const plan = await apiRequest(`/plans/${planId}`);
+
+                editingPlanId = planId;
+                document.getElementById('plan-modal-title').textContent = 'تعديل الخطة';
+                document.getElementById('plan-modal-submit-btn').textContent = '💾 حفظ التعديلات';
+                document.getElementById('plan-name').value = plan.name || '';
+                document.getElementById('plan-description').value = plan.description || '';
+
+                formExercises = (plan.exercises || []).map((ex, i) => ({
+                    exercise_id: ex.exercise_id,
+                    exercise_name: ex.exercise_name,
+                    order_index: i,
+                    target_sets: ex.target_sets,
+                    target_reps: ex.target_reps,
+                    target_weight_mode: ex.target_weight_mode,
+                    fixed_weight: ex.fixed_weight,
+                }));
+                renderFormExercises();
+
+                document.getElementById('create-plan-modal').style.display = 'flex';
+                populateSelects();
+                bindWeightModeListener();
+            } catch(e) {
+                showSnackbar(`تعذر تحميل الخطة: ${e.message}`, 'error');
+            }
+        }
+
+        function bindWeightModeListener() {
+            const modeSelect = document.getElementById('form-weight-mode');
+            modeSelect.onchange = function() {
+                document.getElementById('fixed-weight-label').style.display = this.value === 'FIXED' ? 'inline' : 'none';
+            };
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+            editingPlanId = null;
+        }
 
         function addExerciseToForm() {
             const select = document.getElementById('add-exercise-select');
@@ -242,7 +289,8 @@
             });
         }
 
-        async function createPlan(e) {
+        // ====== إرسال النموذج (إنشاء أو تعديل حسب editingPlanId) ======
+        async function submitPlanForm(e) {
             e.preventDefault();
             const name = document.getElementById('plan-name').value.trim();
             if (!name) { showSnackbar('أدخل اسم الخطة', 'error'); return; }
@@ -262,8 +310,13 @@
             };
 
             try {
-                await apiRequest('/plans', { method: 'POST', body: JSON.stringify(payload) });
-                showSnackbar('✅ تم إنشاء الخطة');
+                if (editingPlanId) {
+                    await apiRequest(`/plans/${editingPlanId}`, { method: 'PUT', body: JSON.stringify(payload) });
+                    showSnackbar('✅ تم حفظ التعديلات');
+                } else {
+                    await apiRequest('/plans', { method: 'POST', body: JSON.stringify(payload) });
+                    showSnackbar('✅ تم إنشاء الخطة');
+                }
                 closeModal('create-plan-modal');
                 loadPlans();
                 document.getElementById('create-plan-form').reset();

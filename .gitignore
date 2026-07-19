@@ -1,5 +1,15 @@
-__pycache__/ 
-.pytest_cache/ 
-*.db 
-*.db-shm 
-*.db-wal 
+# Logs and temporary files
+*.log
+*.pid
+nohup.out
+
+# Keys and Certs
+*.key
+*.crt
+
+# Databases and environments
+*.db
+*.db-shm
+*.db-wal
+.venv/
+__pycache__/

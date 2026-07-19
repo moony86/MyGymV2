@@ -214,6 +214,68 @@ def get_plan(plan_id: str):
         db.close()
 
 
+@router.put("/plans/{plan_id}", response_model=PlanResponse)
+def update_plan(plan_id: str, req: PlanCreate):
+    db = SessionLocal()
+    try:
+        service = PlannerService(db)
+
+        exercises_payload = [
+            {
+                "exercise_id": ex.exercise_id,
+                "order_index": ex.order_index,
+                "target_sets": ex.target_sets,
+                "target_reps": ex.target_reps,
+                "target_weight_mode": ex.target_weight_mode,
+                "fixed_weight": Decimal(str(ex.fixed_weight)) if ex.fixed_weight is not None else None,
+                "fixed_reps": ex.fixed_reps,
+                "rest_seconds": ex.rest_seconds,
+            }
+            for ex in req.exercises
+        ]
+
+        service.update_plan(
+            plan_id=plan_id,
+            name=req.name,
+            description=req.description,
+            exercises=exercises_payload,
+        )
+        db.commit()
+
+        data = service.get_plan_with_details(plan_id)
+        exercises = data.get("exercises", [])
+        names = data.get("exercise_names", {})
+        plan = data.get("plan")
+
+        return PlanResponse(
+            id=plan.id,
+            name=plan.name,
+            description=plan.description,
+            enabled=plan.enabled,
+            created_at=plan.created_at.isoformat(),
+            exercises=[
+                PlanExerciseResponse(
+                    id=pe.id,
+                    exercise_id=pe.exercise_id,
+                    exercise_name=names.get(pe.exercise_id, "Unknown"),
+                    order_index=pe.order_index,
+                    target_sets=pe.target_sets,
+                    target_reps=pe.target_reps,
+                    target_weight_mode=pe.target_weight_mode,
+                    fixed_weight=float(pe.fixed_weight) if pe.fixed_weight is not None else None,
+                    fixed_reps=pe.fixed_reps,
+                    rest_seconds=pe.rest_seconds,
+                )
+                for pe in exercises
+            ]
+        )
+    except ValueError as e:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    finally:
+        db.close()
+
+
 @router.put("/plans/{plan_id}/toggle", response_model=dict)
 def toggle_plan(plan_id: str, enabled: bool = True):
     db = SessionLocal()

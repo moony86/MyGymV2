@@ -579,12 +579,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const params = new URLSearchParams(window.location.search);
         const planId = params.get('plan_id');
 
-        if (sessionData && sessionData.session) {
+        if (sessionData?.session) {
             // ✅ يوجد جلسة نشطة بالفعل على السيرفر — هذا هو المصدر الحقيقي
             // للحقيقة (مو باراميتر الرابط). إذا كانت هذه الجلسة مرتبطة بخطة،
             // استأنف تفاصيل الخطة دائماً (سواء دخلنا بالرابط المباشر مع
             // ?plan_id=، أو من زر "استمرار التمرين الحالي" بدون أي باراميتر).
-            if (sessionData.session.plan_id) {
+            if (sessionData.session.plan_id != null) {
                 await PlannedSession.resume(sessionData.session.id);
             } else {
                 UI.renderWorkoutPage();

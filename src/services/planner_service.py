@@ -64,6 +64,58 @@ class PlannerService:
         self.db.flush()
         return True
 
+    def update_plan(
+        self,
+        plan_id: str,
+        name: str,
+        description: Optional[str],
+        exercises: List[Dict[str, Any]],
+    ) -> WorkoutPlanTable:
+        """
+        تحدّث اسم/وصف الخطة، وتستبدل قائمة تمارينها بالكامل بالقائمة الجديدة
+        (حذف كل تمارين الخطة الحالية ثم إضافة القائمة الجديدة بترتيبها).
+        `exercises` هي قائمة قواميس بنفس شكل معاملات add_exercise_to_plan
+        (باستثناء plan_id).
+        """
+        plan = self.get_plan_by_id(plan_id)
+        if not plan:
+            raise ValueError("Plan not found")
+
+        plan.name = name
+        plan.description = description
+
+        # حذف كل تمارين الخطة الحالية
+        self.db.query(PlanExerciseTable).filter(
+            PlanExerciseTable.plan_id == plan_id
+        ).delete()
+        self.db.flush()
+
+        # إضافة القائمة الجديدة
+        for ex in exercises:
+            exercise = self.db.query(ExerciseTable).filter(
+                ExerciseTable.id == ex["exercise_id"],
+                ExerciseTable.is_active == True
+            ).first()
+            if not exercise:
+                raise ValueError(f"Exercise not found or inactive: {ex['exercise_id']}")
+
+            pe = PlanExerciseTable(
+                id=str(uuid6.uuid7()),
+                plan_id=plan_id,
+                exercise_id=ex["exercise_id"],
+                order_index=ex["order_index"],
+                target_sets=ex.get("target_sets"),
+                target_reps=ex.get("target_reps"),
+                target_weight_mode=ex.get("target_weight_mode", "LAST_SESSION"),
+                fixed_weight=ex.get("fixed_weight"),
+                fixed_reps=ex.get("fixed_reps"),
+                rest_seconds=ex.get("rest_seconds"),
+            )
+            self.db.add(pe)
+
+        self.db.flush()
+        return plan
+
     # ========== إدارة تمارين الخطة ==========
 
     def add_exercise_to_plan(
