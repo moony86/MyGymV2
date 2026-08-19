@@ -161,6 +161,80 @@ def get_workout_history():
     finally:
         db.close()
 
+
+@router.get("/workouts/progress")
+def get_progress_comparison(exercise_id: str = None):
+    db = SessionLocal()
+    try:
+        service = SessionService(db)
+        sessions = service.get_completed_sessions(limit=100)
+        session_rows = []
+        for session in reversed(sessions):
+            query = (
+                db.query(SetTable, ExerciseTable)
+                .join(PerformedExerciseTable, SetTable.performed_exercise_id == PerformedExerciseTable.id)
+                .join(ExerciseTable, PerformedExerciseTable.exercise_id == ExerciseTable.id)
+                .filter(PerformedExerciseTable.session_id == str(session.id))
+            )
+            if exercise_id:
+                query = query.filter(ExerciseTable.id == exercise_id)
+            rows = query.all()
+            by_exercise = {}
+            for orm_set, exercise in rows:
+                bucket = by_exercise.setdefault(exercise.id, {
+                    "exercise_id": exercise.id,
+                    "exercise_name": exercise.name,
+                    "sets": 0,
+                    "volume": Decimal("0"),
+                    "max_weight": Decimal("0"),
+                    "max_reps": 0,
+                    "rpe_values": [],
+                    "rir_values": [],
+                })
+                bucket["sets"] += 1
+                bucket["volume"] += orm_set.weight * orm_set.reps
+                bucket["max_weight"] = max(bucket["max_weight"], orm_set.weight)
+                bucket["max_reps"] = max(bucket["max_reps"], orm_set.reps)
+                if orm_set.rpe is not None:
+                    bucket["rpe_values"].append(orm_set.rpe)
+                if orm_set.rir is not None:
+                    bucket["rir_values"].append(orm_set.rir)
+
+            for bucket in by_exercise.values():
+                rpe_values = bucket.pop("rpe_values")
+                rir_values = bucket.pop("rir_values")
+                bucket["volume"] = float(bucket["volume"])
+                bucket["max_weight"] = float(bucket["max_weight"])
+                bucket["avg_rpe"] = round(sum(rpe_values) / len(rpe_values), 2) if rpe_values else None
+                bucket["avg_rir"] = round(sum(rir_values) / len(rir_values), 2) if rir_values else None
+                bucket["session_id"] = str(session.id)
+                bucket["date"] = session.started_at.isoformat()
+            session_rows.extend(by_exercise.values())
+
+        grouped = {}
+        for row in session_rows:
+            grouped.setdefault(row["exercise_id"], []).append(row)
+
+        result = []
+        for exercise_rows in grouped.values():
+            latest = exercise_rows[-1]
+            previous = exercise_rows[-2] if len(exercise_rows) > 1 else None
+            result.append({
+                "exercise_id": latest["exercise_id"],
+                "exercise_name": latest["exercise_name"],
+                "history": exercise_rows[-12:],
+                "latest": latest,
+                "previous": previous,
+                "change": {
+                    "volume": round(latest["volume"] - previous["volume"], 2) if previous else None,
+                    "max_weight": round(latest["max_weight"] - previous["max_weight"], 2) if previous else None,
+                    "max_reps": latest["max_reps"] - previous["max_reps"] if previous else None,
+                },
+            })
+        return result
+    finally:
+        db.close()
+
 @router.get("/workouts/{session_id}", response_model=ActiveSessionDTO)
 def get_workout(session_id: str):
     db = SessionLocal()

@@ -227,7 +227,7 @@ const ExerciseManager = {
         // بدل ما نبدأ بجدول فاضي (حماية من فقدان قيم كُتبت قبل انقطاع/إغلاق).
         const draftRows = ExerciseDraft.restore(select.value);
         if (draftRows && draftRows.length > 0) {
-            draftRows.forEach(r => this.addNewRow(r.weight, r.reps, r.operation_id));
+            draftRows.forEach(r => this.addNewRow(r.weight, r.reps, r.operation_id, r.rpe, r.rir));
             UI.showSnackbar('↩️ تم استرجاع قيم لم تُحفظ من قبل', 'info');
         } else {
             for (let i = 1; i <= 3; i++) { this.addNewRow(); }
@@ -253,6 +253,8 @@ const ExerciseManager = {
                 weight: row.querySelector('.weight-input').value,
                 reps: row.querySelector('.reps-input').value,
                 operation_id: row.dataset.operationId,
+                rpe: row.querySelector('.rpe-input').value,
+                rir: row.querySelector('.rir-input').value,
             }));
             ExerciseDraft.save(select.value, rows);
         };
@@ -260,7 +262,7 @@ const ExerciseManager = {
         tbody.addEventListener('input', this._draftInputHandler);
     },
 
-    addNewRow(initialWeight = null, initialReps = null, operationId = null) {
+    addNewRow(initialWeight = null, initialReps = null, operationId = null, initialRpe = null, initialRir = null) {
         const tbody = document.getElementById('dynamic-sets-body');
         const rowCount = tbody.rows.length + 1;
 
@@ -287,6 +289,8 @@ const ExerciseManager = {
         <td class="set-number-cell">${rowCount}</td>
         <td><input type="number" class="table-input weight-input" step="0.1" inputmode="decimal" value="${defaultWeight}" placeholder="0"></td>
         <td><input type="number" class="table-input reps-input" inputmode="numeric" value="${defaultReps}" placeholder="0"></td>
+        <td><input type="number" class="table-input rpe-input" min="1" max="10" step="0.5" value="${initialRpe ?? ''}" placeholder="RPE"></td>
+        <td><input type="number" class="table-input rir-input" min="0" max="10" step="1" value="${initialRir ?? ''}" placeholder="RIR"></td>
         <td><button class="btn-delete-row" onclick="this.closest('tr').remove(); ExerciseManager.reindexRows();">❌</button></td>
         `;
         tbody.appendChild(tr);
@@ -326,6 +330,8 @@ const ExerciseManager = {
                 weight: parseFloat(weight),
                 reps: parseInt(reps, 10),
                 client_operation_id: row.dataset.operationId,
+                rpe: row.querySelector('.rpe-input').value ? parseFloat(row.querySelector('.rpe-input').value) : null,
+                rir: row.querySelector('.rir-input').value ? parseInt(row.querySelector('.rir-input').value, 10) : null,
             });
         });
 
@@ -504,7 +510,7 @@ const UI = {
                 row.innerHTML = `
                 <div class="set-main">
                 <span class="set-badge">${set.exercise_name}</span>
-                <span class="set-info">${set.weight} كجم × ${set.reps} عدات</span>
+                <span class="set-info">${set.weight} كجم × ${set.reps} عدات${set.rpe != null ? ` · RPE ${set.rpe}` : ''}${set.rir != null ? ` · RIR ${set.rir}` : ''}</span>
                 </div>
                 `;
                 list.appendChild(row);
@@ -628,7 +634,7 @@ const History = {
             sets.forEach(set => {
                 const name = set.exercise_name || 'تمرين غير معروف';
                 if (!groups[name]) groups[name] = [];
-                groups[name].push({ weight: set.weight, reps: set.reps });
+                groups[name].push({ weight: set.weight, reps: set.reps, rpe: set.rpe, rir: set.rir });
             });
         }
 
@@ -656,6 +662,8 @@ const History = {
                     item.innerHTML = `
                     <span class="modal-set-weight">${set.weight} كجم</span>
                     <span class="modal-set-reps">× ${set.reps} عدات</span>
+                    ${set.rpe != null ? `<span>RPE ${set.rpe}</span>` : ''}
+                    ${set.rir != null ? `<span>RIR ${set.rir}</span>` : ''}
                     `;
                     setsDiv.appendChild(item);
                 });

@@ -45,12 +45,15 @@
 
                 <!-- جدول الجلسات الديناميكي للتمرين المختار -->
                 <div id="dynamic-sets-section" style="display: none; margin-top: 20px;">
+                    <div class="sets-table-wrapper">
                     <table class="sets-table" dir="rtl">
                         <thead>
                             <tr>
                                 <th>الجلسة</th>
                                 <th>الوزن (كجم)</th>
                                 <th>العدات</th>
+                                <th>RPE</th>
+                                <th>RIR</th>
                                 <th>إجراء</th>
                             </tr>
                         </thead>
@@ -58,6 +61,7 @@
                             <!-- الأسطر ستتولد هنا تلقائياً عبر الجافاسكربت -->
                         </tbody>
                     </table>
+                    </div>
 
                     <div class="table-actions-row" style="margin-top: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                         <button class="btn-secondary" onclick="addNewSetRow()">➕ إضافة جلسة جديدة</button>

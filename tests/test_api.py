@@ -80,6 +80,29 @@ def test_profiles_keep_active_sessions_separate():
     assert client.get("/api/workouts/active", headers=first_headers).json()["session"]["id"] == first_start.json()["id"]
     assert client.get("/api/workouts/active", headers=second_headers).json()["session"]["id"] == second_start.json()["id"]
 
+
+def test_progress_comparison_reports_change(db_session, sample_exercise):
+    for weight in (60, 70):
+        start = client.post("/api/workouts/start", json={})
+        session_id = start.json()["id"]
+        response = client.post(f"/api/workouts/{session_id}/sets", json={
+            "exercise_id": str(sample_exercise.id),
+            "weight": weight,
+            "reps": 8,
+            "rpe": 8,
+            "rir": 2,
+        })
+        assert response.status_code == 200
+        assert client.post(f"/api/workouts/{session_id}/finish").status_code == 200
+
+    response = client.get(f"/api/workouts/progress?exercise_id={sample_exercise.id}")
+    assert response.status_code == 200
+    report = response.json()[0]
+    assert report["latest"]["max_weight"] == 70.0
+    assert report["change"]["max_weight"] == 10.0
+    assert report["change"]["volume"] == 80.0
+    assert report["latest"]["avg_rpe"] == 8.0
+
 def test_get_active_workout_empty():
     response = client.get("/api/workouts/active")
     assert response.status_code == 200

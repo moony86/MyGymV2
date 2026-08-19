@@ -48,6 +48,17 @@
                 <div id="history-list">
                 </div>
             </section>
+
+            <section class="card" style="margin-top:16px;">
+                <h2>📈 مقارنة الأداء</h2>
+                <div class="input-group">
+                    <label for="progress-exercise">اختر تمريناً</label>
+                    <select id="progress-exercise">
+                        <option value="">اختر تمريناً للمقارنة</option>
+                    </select>
+                </div>
+                <div id="progress-summary" class="text-muted">اختر تمريناً لعرض آخر أداء والتغير عن الجلسة السابقة.</div>
+            </section>
         </main>
     </div>
 
@@ -100,6 +111,49 @@
 
     <script src="/static/app.js?v=3"></script>
     <script>
+    async function loadProgressExercises() {
+        const selector = document.getElementById('progress-exercise');
+        if (!selector) return;
+        try {
+            const exercises = await fetch('/api/exercises').then(response => response.json());
+            selector.innerHTML += exercises.map(ex => `<option value="${ex.id}">${ex.name}</option>`).join('');
+            selector.addEventListener('change', loadProgressComparison);
+        } catch (error) {
+            selector.innerHTML = '<option value="">تعذر تحميل التمارين</option>';
+        }
+    }
+
+    async function loadProgressComparison() {
+        const exerciseId = document.getElementById('progress-exercise').value;
+        const summary = document.getElementById('progress-summary');
+        if (!exerciseId) {
+            summary.textContent = 'اختر تمريناً لعرض آخر أداء والتغير عن الجلسة السابقة.';
+            return;
+        }
+        summary.textContent = 'جاري تحميل المقارنة...';
+        try {
+            const report = await fetch(`/api/workouts/progress?exercise_id=${encodeURIComponent(exerciseId)}`).then(response => response.json());
+            if (!report.length) {
+                summary.textContent = 'لا توجد جلسات كافية لهذا التمرين بعد.';
+                return;
+            }
+            const item = report[0];
+            const change = item.change;
+            const signed = value => value == null ? 'لا توجد مقارنة' : `${value >= 0 ? '+' : ''}${value}`;
+            summary.innerHTML = `
+                <div class="progress-highlight"><strong>${item.exercise_name}</strong><br>
+                آخر حجم: ${item.latest.volume} كجم · أعلى وزن: ${item.latest.max_weight} كجم · أعلى عدات: ${item.latest.max_reps}<br>
+                التغير عن الجلسة السابقة: الحجم ${signed(change.volume)} · الوزن ${signed(change.max_weight)} · العدات ${signed(change.max_reps)}<br>
+                متوسط الصعوبة: ${item.latest.avg_rpe == null ? 'RPE غير مسجل' : `RPE ${item.latest.avg_rpe}`} · ${item.latest.avg_rir == null ? 'RIR غير مسجل' : `RIR ${item.latest.avg_rir}`}</div>
+                <div class="progress-history">${item.history.map(row => `<div>${new Date(row.date).toLocaleDateString('ar-SA')} · ${row.volume} كجم · ${row.max_weight} كجم × ${row.max_reps} · ${row.avg_rpe == null ? '-' : `RPE ${row.avg_rpe}`}</div>`).join('')}</div>
+            `;
+        } catch (error) {
+            summary.textContent = 'تعذر تحميل المقارنة.';
+        }
+    }
+
+    loadProgressExercises();
+
     async function loadProfiles() {
         const selector = document.getElementById('profile-selector');
         try {
