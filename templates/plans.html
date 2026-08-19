@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>الخطط - MyGym</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css?v=2">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
     <style>
         .plan-card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .plan-card h3 { margin: 0 0 4px 0; }
@@ -28,7 +31,7 @@
     <div class="container">
         <header>
             <button class="btn-back" onclick="window.location.href='/'">← عودة</button>
-            <h1>📋 خططي التدريبية</h1>
+            <h1><i data-lucide="clipboard-list" class="ui-icon"></i> خططي التدريبية</h1>
         </header>
         <main>
 
@@ -94,6 +97,8 @@
             navigator.serviceWorker.register('/static/sw.js');
         }
     </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>if (window.lucide) lucide.createIcons();</script>
     <script>
         const API_BASE = '/api/planner';
         let allExercises = [];

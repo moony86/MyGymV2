@@ -4,13 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>تسجيل تمرين - MyGym</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css?v=2">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container">
         <header>
             <button class="btn-back" onclick="router.navigate('home')">← عودة</button>
-            <h1 id="session-title">جلسة جديدة</h1>
+            <h1 id="session-title"><i data-lucide="dumbbell" class="ui-icon"></i> جلسة جديدة</h1>
             <span id="session-timer" class="timer">00:00</span>
         </header>
 
@@ -99,5 +102,7 @@
         }
     </script>
     <script src="/static/app.js?v=4"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>if (window.lucide) lucide.createIcons();</script>
 </body>
 </html>

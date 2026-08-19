@@ -467,17 +467,17 @@ const UI = {
         const sectionTitle = document.getElementById('workout-section-title');
 
         if (state.workout && state.workout.session) {
-            if (sectionTitle) sectionTitle.textContent = '⚡ الجلسة القائمة حالياً';
+            if (sectionTitle) sectionTitle.innerHTML = '<i data-lucide="zap" class="section-icon"></i> الجلسة القائمة حالياً';
             if (mainBtn) {
                 mainBtn.textContent = 'استمرار التمرين الحالي ⚡';
-                mainBtn.style.background = '#10b981';
+                mainBtn.style.background = '';
             }
             if (abandonBtn) abandonBtn.style.display = 'block';
         } else {
-            if (sectionTitle) sectionTitle.textContent = '🚀 ابدأ تمرينًا جديدًا';
+            if (sectionTitle) sectionTitle.innerHTML = '<i data-lucide="zap" class="section-icon"></i> ابدأ تمرينًا جديدًا';
             if (mainBtn) {
                 mainBtn.textContent = 'ابدأ تمرينًا';
-                mainBtn.style.background = '#2563eb';
+                mainBtn.style.background = '';
             }
             if (abandonBtn) abandonBtn.style.display = 'none';
         }
@@ -723,15 +723,23 @@ async function loadHistory() {
     const list = document.getElementById("history-list");
     if (!list) return;
 
+    list.innerHTML = '<div class="skeleton-list" aria-label="جاري تحميل السجل"><span></span><span></span><span></span></div>';
+
     try {
         const sessions = await API.get('/workouts/history');
 
         if (!sessions.length) {
             list.innerHTML = `
-            <div class="history-empty">
-            لا توجد تمارين سابقة
+            <div class="empty-state">
+                <i data-lucide="calendar-plus" class="empty-icon"></i>
+                <strong>سجّل أول جلسة لك</strong>
+                <span>كل تمرين جديد يضيف نقطة واضحة لمسار تقدمك.</span>
+                <button class="btn-primary empty-cta" onclick="handleMainButtonClick(this)">ابدأ أول تمرين</button>
             </div>
             `;
+            if (window.lucide) lucide.createIcons();
+            Dashboard.renderStreak([]);
+            Dashboard.renderEmptyComparison();
             return;
         }
 
@@ -868,7 +876,10 @@ const Dashboard = {
 
     renderEmptyComparison() {
         const target = document.getElementById('progress-summary');
-        if (target) target.innerHTML = '<div class="comparison-empty"><strong>ابدأ بتسجيل أول جلسة</strong><span>سجّل جلستين لنفس التمرين لنبدأ تتبع تقدمك 💪</span></div>';
+        if (target) {
+            target.innerHTML = '<div class="comparison-empty"><i data-lucide="target" class="empty-icon"></i><strong>سنبدأ التتبع من أول جلسة</strong><span>سجّل جلستين لنفس التمرين لنبدأ قياس تقدمك.</span></div>';
+            if (window.lucide) lucide.createIcons();
+        }
     },
 
     async loadMeasurements() {

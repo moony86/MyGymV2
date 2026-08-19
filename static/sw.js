@@ -1,12 +1,12 @@
-const CACHE_NAME = "mygym-shell-v1";
+const CACHE_NAME = "mygym-shell-v2";
 const APP_SHELL = [
     "/",
     "/workout",
     "/plans",
     "/profile-setup",
     "/body-history",
-    "/static/app.js",
-    "/static/style.css",
+    "/static/app.js?v=4",
+    "/static/style.css?v=2",
     "/static/manifest.json",
     "/static/icon.png",
     "/static/icon-192.png"

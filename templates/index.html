@@ -7,13 +7,16 @@
     <link rel="manifest" href="/static/manifest.json">
     <link rel="icon" href="/static/icon.png" type="image/png">
     <link rel="apple-touch-icon" href="/static/icon.png">
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css?v=2">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
 </head>
 
 <body>
     <div class="container">
         <header>
-            <h1>🏋️ MyGym</h1>
+            <h1><i data-lucide="dumbbell" class="ui-icon"></i> MyGym</h1>
             <span id="streak-badge" class="streak-badge">ابدأ سلسلة جديدة اليوم</span>
             <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
                 <label for="profile-selector">المستخدم:</label>
@@ -26,13 +29,13 @@
 
         <main>
             <section class="card">
-                <h2 id="workout-section-title">🚀 ابدأ تمرينًا جديدًا</h2>
+                <h2 id="workout-section-title"><i data-lucide="zap" class="section-icon"></i> ابدأ تمرينًا جديدًا</h2>
 
                 <button id="main-workout-btn" class="btn-primary btn-large" onclick="handleMainButtonClick(this)" style="transition: all 0.3s ease;">
-                    ابدأ تمرينًا
+                    <i data-lucide="play" class="button-icon"></i> ابدأ تمرينًا
                 </button>
 				<button class="btn-secondary" onclick="window.location.href='/plans'" style="margin-top: 12px; width: 100%;">
-					📋 خططي التدريبية
+                    <i data-lucide="clipboard-list" class="button-icon"></i> خططي التدريبية
 				</button>
 
                 <button id="abandon-shortcut-btn" class="btn-secondary" onclick="abandonActiveSession(this)" style="display: none; margin-top: 12px; width: 100%; background-color: #ef4444; color: white;">
@@ -40,22 +43,22 @@
                 </button>
 
                 <button class="btn-secondary" onclick="toggleBodyTracking()" style="margin-top: 12px; width: 100%;">
-                    📏 قياسات الجسم
+                    <i data-lucide="ruler" class="button-icon"></i> قياسات الجسم
                 </button>
             </section>
 
             <section class="history-section">
-                <h2>✓ آخر التمارين</h2>
+                <h2><i data-lucide="history" class="section-icon"></i> آخر التمارين</h2>
                 <div id="history-list">
                 </div>
             </section>
 
             <section class="card" style="margin-top:16px;">
-                <h2>📈 مقارنة الأداء</h2>
+                <h2><i data-lucide="trending-up" class="section-icon"></i> مقارنة الأداء</h2>
                 <div class="input-group">
                     <label for="progress-exercise">اختر تمريناً</label>
                     <select id="progress-exercise">
-                        <option value="">اختر تمريناً للمقارنة</option>
+                        <option value="">عرض تمرين آخر</option>
                     </select>
                 </div>
                 <div id="progress-summary" class="text-muted">اختر تمريناً لعرض آخر أداء والتغير عن الجلسة السابقة.</div>
@@ -115,7 +118,9 @@
     <div id="snackbar" class="snackbar"></div>
 
     <script src="/static/app.js?v=4"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <script>
+    if (window.lucide) lucide.createIcons();
     async function loadProfiles() {
         const selector = document.getElementById('profile-selector');
         try {
