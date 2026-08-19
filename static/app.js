@@ -735,36 +735,14 @@ async function loadHistory() {
             return;
         }
 
-        list.innerHTML = "";
+        const detailedSessions = await Promise.all(sessions.map(async session => ({
+            summary: session,
+            details: await API.get(`/workouts/${session.id}`),
+        })));
 
-        sessions.forEach(session => {
-            const row = document.createElement("div");
-            row.className = "history-row";
-            row.onclick = () => History.open(session.id);
-
-            let durationText = '';
-            if (session.ended_at) {
-                const start = new Date(session.started_at);
-                const end = new Date(session.ended_at);
-                const diffMin = Math.floor((end - start) / 60000);
-                durationText = diffMin > 0 ? `${diffMin} دقيقة` : '< 1 دقيقة';
-            }
-
-            row.innerHTML = `
-            <div class="history-date">
-            ${new Date(session.started_at).toLocaleDateString("ar-SA")}
-            </div>
-            <div class="history-volume">
-            ${session.volume_kg || 0} كجم
-            </div>
-            <div class="history-sets">
-            ${session.sets_count || 0} مجموعات
-            ${durationText ? `<span style="font-size:0.8rem; color:#6b7280; margin-right:8px;">⏱️ ${durationText}</span>` : ''}
-            </div>
-            `;
-
-            list.appendChild(row);
-        });
+        Dashboard.renderTimeline(detailedSessions);
+        Dashboard.renderStreak(sessions);
+        Dashboard.renderAutomaticComparison(detailedSessions);
 
     } catch (err) {
         console.error(err);
@@ -776,6 +754,149 @@ async function loadHistory() {
         `;
     }
 }
+
+const Dashboard = {
+    rows: [],
+
+    buildRows(detailedSessions) {
+        const rows = [];
+        detailedSessions.forEach(({ summary, details }) => {
+            const grouped = {};
+            (details.sets || []).forEach(set => {
+                const name = set.exercise_name || 'تمرين غير معروف';
+                const bucket = grouped[name] || {
+                    name,
+                    sessionId: summary.id,
+                    date: summary.started_at,
+                    volume: 0,
+                    maxWeight: 0,
+                    maxReps: 0,
+                    sets: 0,
+                    rpe: [],
+                    rir: [],
+                };
+                bucket.volume += Number(set.weight) * Number(set.reps);
+                bucket.maxWeight = Math.max(bucket.maxWeight, Number(set.weight));
+                bucket.maxReps = Math.max(bucket.maxReps, Number(set.reps));
+                bucket.sets += 1;
+                if (set.rpe != null) bucket.rpe.push(Number(set.rpe));
+                if (set.rir != null) bucket.rir.push(Number(set.rir));
+                grouped[name] = bucket;
+            });
+
+            Object.values(grouped).forEach(row => {
+                row.avgRpe = row.rpe.length ? row.rpe.reduce((a, b) => a + b, 0) / row.rpe.length : null;
+                row.avgRir = row.rir.length ? row.rir.reduce((a, b) => a + b, 0) / row.rir.length : null;
+                rows.push(row);
+            });
+        });
+        return rows.sort((a, b) => new Date(a.date) - new Date(b.date));
+    },
+
+    renderTimeline(detailedSessions) {
+        const list = document.getElementById('history-list');
+        if (!list) return;
+        list.innerHTML = '';
+        detailedSessions.forEach(({ summary, details }) => {
+            const names = [...new Set((details.sets || []).map(set => set.exercise_name).filter(Boolean))];
+            const row = document.createElement('button');
+            row.type = 'button';
+            row.className = 'history-row timeline-item';
+            row.onclick = () => History.open(summary.id);
+            row.innerHTML = `
+                <span class="timeline-dot"></span>
+                <span class="history-date">${new Date(summary.started_at).toLocaleDateString('ar-SA', { day: 'numeric', month: 'short' })}</span>
+                <span class="timeline-content"><strong>${names.slice(0, 2).join(' · ') || 'جلسة بدون تمارين'}</strong><small>${names.length > 2 ? `+ ${names.length - 2} تمارين` : ''}</small></span>
+                <span class="history-volume">${Number(summary.volume_kg || 0).toLocaleString()} كجم</span>
+                <span class="history-sets">${summary.sets_count || 0} مجموعات</span>
+            `;
+            list.appendChild(row);
+        });
+    },
+
+    renderStreak(sessions) {
+        const target = document.getElementById('streak-badge');
+        if (!target) return;
+        const days = [...new Set(sessions.map(session => new Date(session.started_at).toISOString().slice(0, 10)))].sort().reverse();
+        let streak = 0;
+        for (let index = 0; index < days.length; index += 1) {
+            const current = new Date(`${days[index]}T00:00:00`);
+            const previous = days[index + 1] ? new Date(`${days[index + 1]}T00:00:00`) : null;
+            if (index === 0 || (current - previous) / 86400000 === 1) streak += 1;
+            else break;
+        }
+        target.textContent = streak > 1 ? `🔥 ${streak} أيام متتالية` : 'ابدأ سلسلة جديدة اليوم';
+    },
+
+    renderAutomaticComparison(detailedSessions) {
+        this.rows = this.buildRows(detailedSessions);
+        const selector = document.getElementById('progress-exercise');
+        if (!selector) return;
+        const names = [...new Set(this.rows.map(row => row.name))];
+        selector.innerHTML = '<option value="">عرض تمرين آخر</option>' + names.map(name => `<option value="${name}">${name}</option>`).join('');
+        const latest = this.rows[this.rows.length - 1];
+        if (latest) {
+            selector.value = latest.name;
+            this.renderComparison(latest.name);
+        } else {
+            this.renderEmptyComparison();
+        }
+        selector.onchange = () => this.renderComparison(selector.value);
+    },
+
+    renderComparison(name) {
+        const target = document.getElementById('progress-summary');
+        if (!target) return;
+        const history = this.rows.filter(row => row.name === name);
+        if (!history.length) return this.renderEmptyComparison();
+        const latest = history[history.length - 1];
+        const previous = history[history.length - 2];
+        const personalBestWeight = Math.max(...history.map(row => row.maxWeight));
+        const personalBestVolume = Math.max(...history.map(row => row.volume));
+        const change = previous ? latest.maxWeight - previous.maxWeight : null;
+        const changeClass = change == null ? '' : change >= 0 ? 'is-positive' : 'is-negative';
+        const changeText = change == null ? 'سجّل جلسة أخرى لنعرض التغير' : `${change >= 0 ? '↑' : '↓'} ${Math.abs(change).toFixed(1)} كجم عن الجلسة السابقة`;
+        const points = history.slice(-10);
+        const maxValue = Math.max(...points.map(row => row.maxWeight), 1);
+        const sparkline = points.map((row, index) => `${(index / Math.max(points.length - 1, 1)) * 100},${36 - (row.maxWeight / maxValue) * 30}`).join(' ');
+        target.innerHTML = `
+            <div class="comparison-head"><div><small>آخر أداء</small><strong>${latest.maxWeight} كجم × ${latest.maxReps}</strong></div><span class="comparison-change ${changeClass}">${changeText}</span></div>
+            <div class="comparison-grid"><div><small>أفضل وزن شخصي</small><strong>${personalBestWeight} كجم</strong></div><div><small>أفضل حجم في جلسة</small><strong>${Math.round(personalBestVolume).toLocaleString()} كجم</strong></div><div><small>الصعوبة</small><strong>${latest.avgRpe == null ? 'غير مسجل' : `RPE ${latest.avgRpe.toFixed(1)}`}${latest.avgRir == null ? '' : ` · RIR ${latest.avgRir.toFixed(1)}`}</strong></div></div>
+            <div class="sparkline-wrap"><svg viewBox="0 0 100 40" preserveAspectRatio="none" role="img" aria-label="تطور الوزن"><polyline points="${sparkline}" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke" /></svg><small>تطور أعلى وزن عبر آخر ${points.length} جلسات</small></div>
+        `;
+    },
+
+    renderEmptyComparison() {
+        const target = document.getElementById('progress-summary');
+        if (target) target.innerHTML = '<div class="comparison-empty"><strong>ابدأ بتسجيل أول جلسة</strong><span>سجّل جلستين لنفس التمرين لنبدأ تتبع تقدمك 💪</span></div>';
+    },
+
+    async loadMeasurements() {
+        const target = document.getElementById('body-measurement-summary');
+        const latest = document.getElementById('latest-measurement');
+        if (!target || !latest) return;
+        target.textContent = 'جاري تحميل القياسات...';
+        try {
+            const measurements = await API.request('/profile/measurements?limit=30', { method: 'GET' });
+            const withWeight = measurements.filter(item => item.weight != null).reverse();
+            if (!withWeight.length) {
+                latest.innerHTML = '<p class="text-muted">لا توجد قياسات بوزن مسجل بعد.</p>';
+                target.innerHTML = '<div class="comparison-empty"><strong>ابدأ أول قياس</strong><span>سجّل قياساً واحداً لنبدأ متابعة التغير.</span></div>';
+                return;
+            }
+            const last = withWeight[withWeight.length - 1];
+            const previous = withWeight[withWeight.length - 2];
+            const change = previous ? Number(last.weight) - Number(previous.weight) : null;
+            const points = withWeight.slice(-10);
+            const max = Math.max(...points.map(item => Number(item.weight)), 1);
+            const line = points.map((item, index) => `${(index / Math.max(points.length - 1, 1)) * 100},${36 - (Number(item.weight) / max) * 30}`).join(' ');
+            latest.innerHTML = `<strong>${last.weight} كجم</strong><span>${new Date(last.date).toLocaleDateString('ar-SA')}</span>`;
+            target.innerHTML = `<div class="comparison-head"><div><small>آخر وزن</small><strong>${last.weight} كجم</strong></div><span class="comparison-change ${change == null ? '' : change <= 0 ? 'is-positive' : 'is-negative'}">${change == null ? 'لا توجد مقارنة' : `${change >= 0 ? '+' : ''}${change.toFixed(1)} كجم`}</span></div><div class="sparkline-wrap"><svg viewBox="0 0 100 40" preserveAspectRatio="none" role="img" aria-label="تغير الوزن"><polyline points="${line}" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke" /></svg><small>تغير الوزن عبر آخر ${points.length} قياسات</small></div>`;
+        } catch (error) {
+            target.textContent = 'تعذر تحميل القياسات حالياً.';
+        }
+    },
+};
 
 function handleExerciseChange() { ExerciseManager.handleChange(); }
 function addNewSetRow() { ExerciseManager.addNewRow(); }
@@ -1121,12 +1242,15 @@ window.addEventListener('offline', () => {
 
 // ====== Body Tracking Toggle ======
 async function toggleBodyTracking() {
+    const mainContainer = document.querySelector('body > .container');
     const section = document.getElementById('body-tracking-dashboard');
-    if (!section) return;
+    if (!section || !mainContainer) return;
     const isHidden = section.style.display === 'none' || section.style.display === '';
+    mainContainer.style.display = isHidden ? 'none' : 'block';
     section.style.display = isHidden ? 'block' : 'none';
     if (isHidden) {
         await loadLatestMeasurement();
+        await Dashboard.loadMeasurements();
     }
 }
 

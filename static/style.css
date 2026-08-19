@@ -31,6 +31,16 @@ header h1 {
     font-weight: 700;
 }
 
+.streak-badge {
+    color: #b45309;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 999px;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
 .timer {
     font-family: 'Courier New', monospace;
     font-size: 1.25rem;
@@ -185,6 +195,104 @@ header h1 {
     color: #9ca3af;
     text-align: center;
     padding: 20px;
+}
+
+.timeline-item {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto auto 1fr auto auto;
+    gap: 8px;
+    align-items: center;
+    width: 100%;
+    border: 0;
+    text-align: right;
+    cursor: pointer;
+}
+
+.timeline-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #2563eb;
+}
+
+.timeline-content {
+    display: grid;
+    gap: 2px;
+}
+
+.timeline-content small {
+    color: #9ca3af;
+    font-size: 0.75rem;
+}
+
+.comparison-head,
+.comparison-grid {
+    display: grid;
+    gap: 10px;
+}
+
+.comparison-head {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+}
+
+.comparison-head strong,
+.comparison-grid strong {
+    display: block;
+    color: #111827;
+    font-size: 1.05rem;
+}
+
+.comparison-head small,
+.comparison-grid small {
+    color: #6b7280;
+    font-size: 0.75rem;
+}
+
+.comparison-change {
+    color: #6b7280;
+    font-size: 0.8rem;
+}
+
+.comparison-change.is-positive { color: #15803d; }
+.comparison-change.is-negative { color: #dc2626; }
+
+.comparison-grid {
+    grid-template-columns: repeat(3, 1fr);
+    margin-top: 14px;
+}
+
+.sparkline-wrap {
+    color: #2563eb;
+    margin-top: 16px;
+}
+
+.sparkline-wrap svg {
+    display: block;
+    width: 100%;
+    height: 56px;
+    background: #eff6ff;
+    border-radius: 8px;
+    padding: 8px;
+}
+
+.sparkline-wrap small {
+    display: block;
+    color: #6b7280;
+    margin-top: 6px;
+}
+
+.comparison-empty {
+    display: grid;
+    gap: 4px;
+    text-align: center;
+    padding: 12px;
+}
+
+.comparison-empty span {
+    color: #6b7280;
+    font-size: 0.85rem;
 }
 
 .snackbar {
