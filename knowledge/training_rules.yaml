@@ -1,0 +1,258 @@
+version: 1.0
+
+metadata:
+  name: Training Rules
+  description: >
+    Scientific and practical training recommendations used by the Gym
+    Knowledge Engine. These rules are independent of scoring,
+    evaluation, or plan generation logic.
+
+# ==========================================================
+# TRAINING FREQUENCY
+# ==========================================================
+
+training_frequency:
+
+  beginner:
+
+    minimum_sessions_per_week: 2
+    recommended_sessions_per_week: 3
+    maximum_sessions_per_week: 4
+
+  intermediate:
+
+    minimum_sessions_per_week: 3
+    recommended_sessions_per_week: 4
+    maximum_sessions_per_week: 6
+
+  advanced:
+
+    minimum_sessions_per_week: 4
+    recommended_sessions_per_week: 5
+    maximum_sessions_per_week: 6
+
+# ==========================================================
+# MUSCLE FREQUENCY
+# ==========================================================
+
+muscle_frequency:
+
+  minimum_per_week: 2
+
+  recommended_per_week: 2
+
+  maximum_per_week: 3
+
+# ==========================================================
+# WEEKLY TRAINING VOLUME
+# ==========================================================
+
+weekly_volume:
+
+  hypertrophy:
+
+    minimum_sets_per_muscle: 10
+
+    recommended_sets:
+
+      low: 12
+
+      high: 18
+
+    maximum_sets_per_muscle: 20
+
+  strength:
+
+    minimum_sets_per_muscle: 6
+
+    recommended_sets:
+
+      low: 8
+
+      high: 12
+
+    maximum_sets_per_muscle: 15
+
+# ==========================================================
+# SESSION DURATION
+# ==========================================================
+
+session_duration:
+
+  minimum_minutes: 45
+
+  recommended_minutes:
+
+    low: 60
+
+    high: 75
+
+  maximum_minutes: 90
+
+# ==========================================================
+# EXERCISE ORDER
+# ==========================================================
+
+exercise_order:
+
+  - compound
+
+  - accessory
+
+  - isolation
+
+# ==========================================================
+# SETS
+# ==========================================================
+
+sets:
+
+  compound:
+
+    minimum: 3
+
+    recommended: 3
+
+    maximum: 5
+
+  isolation:
+
+    minimum: 2
+
+    recommended: 3
+
+    maximum: 4
+
+# ==========================================================
+# REP RANGES
+# ==========================================================
+
+repetitions:
+
+  hypertrophy:
+
+    recommended:
+
+      minimum: 6
+
+      maximum: 15
+
+  strength:
+
+    recommended:
+
+      minimum: 3
+
+      maximum: 8
+
+# ==========================================================
+# REST BETWEEN SETS
+# ==========================================================
+
+rest_between_sets:
+
+  compound:
+
+    minimum_seconds: 90
+
+    recommended_seconds: 150
+
+    maximum_seconds: 240
+
+  isolation:
+
+    minimum_seconds: 45
+
+    recommended_seconds: 75
+
+    maximum_seconds: 120
+
+# ==========================================================
+# RECOVERY
+# ==========================================================
+
+recovery:
+
+  minimum_rest_same_muscle_hours: 48
+
+  preferred_rest_same_muscle_hours: 72
+
+# ==========================================================
+# MUSCLE COVERAGE
+# ==========================================================
+
+muscle_coverage:
+
+  major_muscles:
+
+    - group.chest
+    - group.back
+    - group.shoulders
+    - group.legs
+
+  optional_muscles:
+
+    - muscle.calves
+    - muscle.abs
+    - muscle.forearms
+    - muscle.adductors
+
+# ==========================================================
+# MOVEMENT COVERAGE
+# ==========================================================
+
+movement_coverage:
+
+  required:
+
+    - movement.horizontal_push
+    - movement.horizontal_pull
+    - movement.vertical_push
+    - movement.vertical_pull
+    - movement.squat
+    - movement.hip_hinge
+
+  optional:
+
+    - movement.calf_extension
+    - movement.core_flexion
+    - movement.core_rotation
+    - movement.core_stability
+
+# ==========================================================
+# BEGINNER RECOMMENDATIONS
+# ==========================================================
+
+beginners:
+
+  prefer_machine_variants: true
+
+  prefer_lower_technical_complexity: true
+
+  avoid_high_fatigue_exercises: true
+
+  prioritize_consistency: true
+
+# ==========================================================
+# FATIGUE MANAGEMENT
+# ==========================================================
+
+fatigue_management:
+
+  maximum_high_fatigue_compounds_per_session: 3
+
+  avoid_consecutive_high_fatigue_days: true
+
+# ==========================================================
+# GENERAL PRINCIPLES
+# ==========================================================
+
+principles:
+
+  progressive_overload: true
+
+  prioritize_technique_over_load: true
+
+  recovery_is_required: true
+
+  consistency_over_perfection: true

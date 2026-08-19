@@ -1,0 +1,270 @@
+version: 1.0
+
+metadata:
+  name: Workout Templates
+  description: >
+    Defines every supported workout template.
+    A template describes the overall structure of a workout plan.
+    It does NOT define exercises.
+
+templates:
+
+# ==========================================================
+# FULL BODY
+# ==========================================================
+
+- id: template.full_body
+
+  name: Full Body
+
+  description: >
+    Every workout trains most major muscle groups.
+
+  category:
+    - full_body
+
+  supported_days:
+
+    minimum: 2
+
+    recommended: 3
+
+    maximum: 4
+
+  experience:
+
+    beginner: true
+
+    intermediate: true
+
+    advanced: true
+
+  supports:
+
+    hypertrophy: true
+
+    strength: true
+
+    general_fitness: true
+
+    endurance: true
+
+  recovery_requirement: high
+
+  fatigue_index: 8
+
+  complexity_index: 2
+
+  weekly_frequency:
+
+    muscle_target: 2
+
+  session_duration:
+
+    minimum: 50
+
+    recommended: 70
+
+    maximum: 90
+
+  rotation_pattern:
+    - slot: 1
+      type: full_body_focus_a
+      target_categories: [group.chest, group.back, group.legs, group.shoulders]
+    - slot: 2
+      type: full_body_focus_b
+      target_categories: [group.legs, group.back, group.chest, group.arms]
+    - slot: 3
+      type: full_body_focus_c
+      target_categories: [group.chest, group.legs, group.back, group.core]
+
+  advantages:
+
+    - high_frequency
+
+    - beginner_friendly
+
+    - excellent_for_learning
+
+    - easy_progress_tracking
+
+    - flexible_schedule
+
+  disadvantages:
+
+    - long_sessions
+
+    - high_systemic_fatigue
+
+    - limited_exercise_variety_per_session
+
+# ==========================================================
+# UPPER LOWER
+# ==========================================================
+
+- id: template.upper_lower
+
+  name: Upper Lower
+
+  description: >
+    Alternates between upper-body and lower-body sessions.
+
+  category:
+
+    - upper_lower
+
+  supported_days:
+
+    minimum: 2
+
+    recommended: 4
+
+    maximum: 6
+
+  experience:
+
+    beginner: true
+
+    intermediate: true
+
+    advanced: true
+
+  supports:
+
+    hypertrophy: true
+
+    strength: true
+
+    general_fitness: true
+
+    endurance: false
+
+  recovery_requirement: medium
+
+  fatigue_index: 6
+
+  complexity_index: 3
+
+  weekly_frequency:
+
+    muscle_target: 2
+
+  session_duration:
+
+    minimum: 45
+
+    recommended: 60
+
+    maximum: 80
+
+  rotation_pattern:
+    - slot: 1
+      type: upper
+      target_categories: [group.chest, group.back, group.shoulders, group.arms]
+    - slot: 2
+      type: lower
+      target_categories: [group.legs, group.core]
+
+  advantages:
+
+    - balanced_volume
+
+    - manageable_recovery
+
+    - easy_progression
+
+    - flexible_schedule
+
+  disadvantages:
+
+    - less_frequency_than_full_body_if_two_days_only
+
+# ==========================================================
+# PUSH PULL LEGS
+# ==========================================================
+
+- id: template.push_pull_legs
+
+  name: Push Pull Legs
+
+  short_name: PPL
+
+  description: >
+    Splits training into Push, Pull and Legs sessions.
+
+  category:
+
+    - ppl
+
+  supported_days:
+
+    minimum: 3
+
+    recommended: 6
+
+    maximum: 6
+
+  experience:
+
+    beginner: false
+
+    intermediate: true
+
+    advanced: true
+
+  supports:
+
+    hypertrophy: true
+
+    strength: true
+
+    general_fitness: true
+
+    endurance: false
+
+  recovery_requirement: medium
+
+  fatigue_index: 5
+
+  complexity_index: 4
+
+  weekly_frequency:
+
+    muscle_target: 2
+
+  session_duration:
+
+    minimum: 45
+
+    recommended: 60
+
+    maximum: 75
+
+  rotation_pattern:
+    - slot: 1
+      type: push
+      target_categories: [group.chest, group.shoulders, group.arms]
+    - slot: 2
+      type: pull
+      target_categories: [group.back, group.arms, group.shoulders]
+    - slot: 3
+      type: legs
+      target_categories: [group.legs, group.core]
+
+  advantages:
+
+    - high_exercise_variety
+
+    - excellent_volume_distribution
+
+    - lower_per_session_fatigue
+
+    - easy_specialization
+
+  disadvantages:
+
+    - requires_more_training_days
+
+    - poor_choice_for_inconsistent_schedule
+
+    - reduced_frequency_if_only_three_days

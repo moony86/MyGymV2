@@ -1,17 +1,18 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Header
 from typing import List, Any
 from decimal import Decimal
 import uuid
 
 from src.apis.schemas import (
     StartWorkoutRequest, AddSetRequest, FinishWorkoutRequest, UpdateSetRequest,
-    SessionDTO, SetDTO, ActiveSessionDTO, MessageResponse, ExerciseDTO
+    SessionDTO, SetDTO, ActiveSessionDTO, MessageResponse, ExerciseDTO,
+    AddExerciseToSessionRequest, PerformedExerciseDTO
 )
 from src.services.session_service import SessionService
 from src.services.units_service import WeightFormatter
 from src.domain.entities import Set, Session
 from src.domain.enums import SessionStatus, SetType
-from src.infrastructure.db.models import ExerciseTable, SetTable, PerformedExerciseTable
+from src.infrastructure.db.models import ExerciseTable, SetTable, PerformedExerciseTable, PlanExerciseTable, SessionTable, ClientOperationTable, DEFAULT_PROFILE_ID
 from src.infrastructure.db.connection import SessionLocal
 
 router = APIRouter(prefix="/api", tags=["workouts"])
@@ -44,6 +45,7 @@ def set_to_dto(orm_set, exercise_name: str = "") -> SetDTO:
         weight=orm_set.weight,
         reps=orm_set.reps,
         rpe=orm_set.rpe,
+        rir=orm_set.rir,
         set_type=SetType(orm_set.set_type),
         volume_kg=orm_set.weight * orm_set.reps
     )
@@ -197,6 +199,21 @@ def get_workout(session_id: str):
 def add_set(session_id: str, req: AddSetRequest):
     db = SessionLocal()
     try:
+        if req.client_operation_id:
+            previous = db.query(ClientOperationTable).filter(
+                ClientOperationTable.operation_id == req.client_operation_id,
+                ClientOperationTable.operation_type == "add_set",
+            ).first()
+            if previous:
+                orm_set = db.query(SetTable).filter(SetTable.id == previous.resource_id).first()
+                if orm_set:
+                    pe = db.query(PerformedExerciseTable).filter(PerformedExerciseTable.id == str(orm_set.performed_exercise_id)).first()
+                    exercise_name = ""
+                    if pe:
+                        ex = db.query(ExerciseTable).filter(ExerciseTable.id == pe.exercise_id).first()
+                        exercise_name = ex.name if ex else ""
+                    return set_to_dto(orm_set, exercise_name)
+
         service = SessionService(db)
         orm_set = service.add_set(
             session_id=uuid.UUID(session_id),
@@ -206,8 +223,15 @@ def add_set(session_id: str, req: AddSetRequest):
             set_order=req.set_order,
             set_type=req.set_type,
             rpe=req.rpe,
+            rir=req.rir,
             notes=req.notes
         )
+        if req.client_operation_id:
+            db.add(ClientOperationTable(
+                operation_id=req.client_operation_id,
+                operation_type="add_set",
+                resource_id=str(orm_set.id),
+            ))
         db.commit()
         
         pe = db.query(PerformedExerciseTable).filter(PerformedExerciseTable.id == str(orm_set.performed_exercise_id)).first()
@@ -234,7 +258,8 @@ def update_set(set_id: str, req: UpdateSetRequest):
             weight=req.weight,
             reps=req.reps,
             set_type=req.set_type,
-            rpe=req.rpe
+            rpe=req.rpe,
+            rir=req.rir
         )
         db.commit()
         
@@ -325,5 +350,86 @@ def delete_workout(session_id: str):
     except ValueError as e:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    finally:
+        db.close()
+
+@router.post("/workouts/{session_id}/exercises", response_model=PerformedExerciseDTO)
+def add_exercise_to_session(session_id: str, req: AddExerciseToSessionRequest):
+    db = SessionLocal()
+    try:
+        service = SessionService(db)
+        performed = service.add_exercise_to_session(session_id, req.exercise_id)
+        db.commit()
+
+        exercise = db.query(ExerciseTable).filter(ExerciseTable.id == performed.exercise_id).first()
+
+        # هل هذا التمرين ضمن خطة هذه الجلسة أصلًا؟
+        session = db.query(SessionTable).filter(SessionTable.id == session_id).first()
+        is_planned = False
+        if session and session.plan_id:
+            is_planned = db.query(PlanExerciseTable).filter(
+                PlanExerciseTable.plan_id == session.plan_id,
+                PlanExerciseTable.exercise_id == performed.exercise_id
+            ).first() is not None
+
+        has_sets = db.query(SetTable).filter(
+            SetTable.performed_exercise_id == performed.id
+        ).count() > 0
+
+        return PerformedExerciseDTO(
+            id=str(performed.id),
+            exercise_id=str(performed.exercise_id),
+            exercise_name=exercise.name if exercise else "",
+            display_order=performed.display_order,
+            is_planned=is_planned,
+            has_sets=has_sets,
+        )
+    except ValueError as e:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    finally:
+        db.close()
+
+
+@router.get("/workouts/{session_id}/exercises", response_model=List[PerformedExerciseDTO])
+def get_session_exercises(session_id: str):
+    """
+    مصدر الحقيقة الوحيد لكل تمارين الجلسة (خطة + إضافية)، بدل أي اشتقاق
+    بالواجهة من الـ Sets. يُستدعى عند Resume أو عند فتح شاشة التسجيل.
+    """
+    db = SessionLocal()
+    try:
+        session = db.query(SessionTable).filter(SessionTable.id == session_id).first()
+        if not session:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+        planned_exercise_ids = set()
+        if session.plan_id:
+            rows = db.query(PlanExerciseTable.exercise_id).filter(
+                PlanExerciseTable.plan_id == session.plan_id
+            ).all()
+            planned_exercise_ids = {r[0] for r in rows}
+
+        performed_list = db.query(PerformedExerciseTable).filter(
+            PerformedExerciseTable.session_id == session_id
+        ).order_by(PerformedExerciseTable.display_order).all()
+
+        result = []
+        for pe in performed_list:
+            exercise = db.query(ExerciseTable).filter(ExerciseTable.id == pe.exercise_id).first()
+            has_sets = db.query(SetTable).filter(
+                SetTable.performed_exercise_id == pe.id
+            ).count() > 0
+
+            result.append(PerformedExerciseDTO(
+                id=str(pe.id),
+                exercise_id=str(pe.exercise_id),
+                exercise_name=exercise.name if exercise else "",
+                display_order=pe.display_order,
+                is_planned=pe.exercise_id in planned_exercise_ids,
+                has_sets=has_sets,
+            ))
+
+        return result
     finally:
         db.close()

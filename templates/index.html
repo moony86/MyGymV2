@@ -9,10 +9,18 @@
     <link rel="apple-touch-icon" href="/static/icon.png">
     <link rel="stylesheet" href="/static/style.css">
 </head>
+
 <body>
     <div class="container">
         <header>
             <h1>🏋️ MyGym</h1>
+            <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+                <label for="profile-selector">المستخدم:</label>
+                <select id="profile-selector" style="flex:1; padding:8px;">
+                    <option>جاري التحميل...</option>
+                </select>
+                <button class="btn-secondary" onclick="addProfile()" style="width:auto;">+ شخص</button>
+            </div>
         </header>
 
         <main>
@@ -28,6 +36,10 @@
 
                 <button id="abandon-shortcut-btn" class="btn-secondary" onclick="abandonActiveSession(this)" style="display: none; margin-top: 12px; width: 100%; background-color: #ef4444; color: white;">
                     🗑️ حذف وإلغاء الجلسة المعلقة
+                </button>
+
+                <button class="btn-secondary" onclick="toggleBodyTracking()" style="margin-top: 12px; width: 100%;">
+                    📏 قياسات الجسم
                 </button>
             </section>
 
@@ -59,8 +71,101 @@
         </div>
     </div>
 
+    <!-- ====== قسم تتبع الجسم (مخفي افتراضيًا) ====== -->
+    <div id="body-tracking-dashboard" style="display: none;">
+        <div class="container">
+            <header>
+                <h1>📏 تتبع الجسم</h1>
+            </header>
+            <main>
+                <section class="card">
+                    <h2>آخر قياس</h2>
+                    <div id="latest-measurement">
+                        <p style="color: var(--text-secondary);">لا توجد قياسات بعد</p>
+                    </div>
+                </section>
+                <section class="card" style="margin-top: 16px;">
+                    <button class="btn-primary" onclick="window.location.href='/profile-setup#body-tracking'">
+                        + إضافة قياس جديد
+                    </button>
+                    <button class="btn-secondary" onclick="window.location.href='/body-history'" style="margin-top: 8px; width: 100%;">
+                        📋 سجل القياسات
+                    </button>
+                </section>
+            </main>
+        </div>
+    </div>
+
     <div id="snackbar" class="snackbar"></div>
 
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=3"></script>
+    <script>
+    async function loadProfiles() {
+        const selector = document.getElementById('profile-selector');
+        try {
+            const response = await fetch('/api/profiles');
+            const profiles = await response.json();
+            const current = localStorage.getItem('mygym_profile_id') || (profiles[0] && profiles[0].id);
+            selector.innerHTML = profiles.map(profile =>
+                `<option value="${profile.id}" ${profile.id === current ? 'selected' : ''}>${profile.name}</option>`
+            ).join('');
+            if (current && current !== localStorage.getItem('mygym_profile_id')) {
+                localStorage.setItem('mygym_profile_id', current);
+            }
+        } catch (error) {
+            selector.innerHTML = '<option>تعذر تحميل الملفات</option>';
+        }
+        selector.addEventListener('change', () => {
+            localStorage.setItem('mygym_profile_id', selector.value);
+            window.location.reload();
+        });
+    }
+
+    async function addProfile() {
+        const name = prompt('اسم الشخص');
+        if (!name || !name.trim()) return;
+        const response = await fetch('/api/profiles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name.trim() }),
+        });
+        if (!response.ok) return;
+        const profile = await response.json();
+        localStorage.setItem('mygym_profile_id', profile.id);
+        window.location.href = '/profile-setup';
+    }
+
+    loadProfiles();
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/static/sw.js');
+    }
+
+    // ====== Onboarding Check ======
+    (async function checkOnboarding() {
+        const completed = localStorage.getItem('onboarding_completed');
+        if (completed === 'true') {
+            return;
+        }
+        try {
+            const res = await fetch('/api/profile', {
+                headers: localStorage.getItem('mygym_profile_id')
+                    ? { 'X-Profile-Id': localStorage.getItem('mygym_profile_id') }
+                    : {},
+            });
+            if (res.ok) {
+                localStorage.setItem('onboarding_completed', 'true');
+                return;
+            }
+            if (res.status === 404) {
+                window.location.href = '/profile-setup';
+                return;
+            }
+            console.warn('Profile check failed, continuing without redirect:', res.status);
+        } catch (err) {
+            console.warn('Profile check network error:', err);
+        }
+    })();
+    </script>
 </body>
 </html>

@@ -1,0 +1,203 @@
+"""
+Generator Service (V2 - Knowledge Base Integrated)
+==================================================
+يربط TrainingProfileTable بالقاعدة المعرفية (عبر KnowledgeProvider/Queries)
+وينتج WorkoutPlanTable فعلية بناءً على القوالب وقواعد اختيار التمارين الديناميكية.
+"""
+
+from typing import Optional, List, Tuple
+from sqlalchemy.orm import Session as DbSession
+
+from src.apis.deps import get_knowledge_provider, get_knowledge_queries
+from src.infrastructure.db.models import ExerciseTable, TrainingProfileTable, WorkoutPlanTable
+from src.services.planner_service import PlannerService
+
+# هدف البروفايل -> مفتاح القوالب/القواعد بالقاعدة المعرفية
+GOAL_TO_TEMPLATE_SUPPORT = {
+    "HYPERTROPHY": "hypertrophy",
+    "STRENGTH": "strength",
+    "FAT_LOSS": "general_fitness",
+    "GENERAL_FITNESS": "general_fitness",
+}
+
+GOAL_TO_TRAINING_RULES = {
+    "HYPERTROPHY": "hypertrophy",
+    "STRENGTH": "strength",
+    "FAT_LOSS": "hypertrophy",
+    "GENERAL_FITNESS": "hypertrophy",
+}
+
+
+class NoSuitableTemplateError(Exception):
+    pass
+
+
+class GeneratorService:
+    def __init__(self, db: DbSession):
+        self.db = db
+        self.provider = get_knowledge_provider()
+        self.queries = get_knowledge_queries()
+        self.planner = PlannerService(db)
+        self.warnings: List[str] = []
+
+    def generate_plan_for_profile(self, profile: TrainingProfileTable) -> WorkoutPlanTable:
+        template = self._select_template(profile)
+
+        # إنشاء الخطة الأساسية
+        plan = self.planner.create_plan(
+            name=f"خطة تلقائية - {template.name}",
+            description=f"تم توليدها تلقائيًا بناءً على بروفايلك ({template.name}، "
+                        f"{profile.training_days_per_week} أيام/أسبوع)",
+        )
+
+        self.warnings = []
+
+        # اختيار التمارين وتطبيق منطق الترتيب والحدود
+        selection = self._select_exercises_for_template(profile, template)
+
+        for order, (exercise, variant, exercise_row, sets, reps) in enumerate(selection):
+            self.planner.add_exercise_to_plan(
+                plan_id=plan.id,
+                exercise_id=exercise_row.id,
+                order_index=order,
+                target_sets=sets,
+                target_reps=reps,
+                target_weight_mode="LAST_SESSION",
+            )
+
+        self.db.commit()
+
+        if self.warnings:
+            print("⚠️  تحذيرات أثناء توليد الخطة:")
+            for w in self.warnings:
+                print(f"   - {w}")
+
+        return plan
+
+    def _select_template(self, profile: TrainingProfileTable):
+        level_key = profile.experience_level.lower()
+        support_key = GOAL_TO_TEMPLATE_SUPPORT.get(profile.primary_goal, "general_fitness")
+
+        candidates = [
+            t for t in self.queries.get_templates_for_days(profile.training_days_per_week)
+            if t.experience.get(level_key) and t.supports.get(support_key)
+        ]
+        if not candidates:
+            raise NoSuitableTemplateError(
+                f"لا يوجد قالب مناسب لـ experience={level_key}, "
+                f"days={profile.training_days_per_week}, goal={support_key}"
+            )
+        candidates.sort(key=lambda t: t.complexity_index)
+        return candidates[0]
+
+    def _select_exercises_for_template(self, profile: TrainingProfileTable, template) -> List[Tuple]:
+        gen_rules = self.provider.generator_rules
+        training_rules = self.provider.training_rules
+        level_key = profile.experience_level.lower()
+
+        variant_rules = gen_rules["variant_selection"].get(level_key, {"allow_all": True})
+        avoid_equipment = set(variant_rules.get("avoid", []))
+        prefer_order = variant_rules.get("prefer", [])
+
+        # استخراج نوع التقسيم بحذر (قراءة category كـ list وإلا الافتراضي full_body)
+        split_type = "full_body"
+        if hasattr(template, 'category') and isinstance(template.category, list) and len(template.category) > 0:
+            split_type = template.category[0]
+
+        # جلب حدود التمارين من generator_rules.yaml
+        limits_config = gen_rules.get("exercise_limits", {})
+        split_limits = limits_config.get("per_session", {}).get(split_type, limits_config.get("per_session", {}).get("default", {}))
+
+        max_total_exercises = split_limits.get("max_total_exercises", 6)
+        max_primary = split_limits.get("max_primary_exercises", 3)
+
+        rep_goal_key = GOAL_TO_TRAINING_RULES.get(profile.primary_goal, "hypertrophy")
+        required_movements = gen_rules["movement_selection"]["required"]
+
+        primary_selected = 0
+        result = []
+
+        for movement_id in required_movements:
+            if len(result) >= max_total_exercises:
+                break
+
+            # 1. اختيار التمرين (Primary أولاً وإذا وصلنا للحد نتحول إلى Accessory)
+            role_pref = "primary" if primary_selected < max_primary else "accessory"
+            exercise = self._pick_exercise_for_movement(movement_id, role_preference=role_pref)
+
+            if exercise is None:
+                self.warnings.append(f"لا يوجد تمرين معرّف لحركة '{movement_id}' بالقاعدة المعرفية.")
+                continue
+
+            # 2. اختيار الـ Variant المطابق والموجود في قاعدة البيانات
+            variant, exercise_row = self._pick_variant_with_linked_row(
+                exercise.id, avoid_equipment, prefer_order
+            )
+
+            if variant is None or exercise_row is None:
+                self.warnings.append(
+                    f"حركة '{movement_id}' (تمرين '{exercise.id}'): كل الـ variants المتاحة غير مربوطة بجدول exercises."
+                )
+                continue
+
+            # 3. حساب الجلسات والتكرارات الديناميكية
+            sets, reps = self._sets_and_reps(exercise, training_rules, rep_goal_key)
+            result.append((exercise, variant, exercise_row, sets, reps))
+
+            if getattr(exercise, 'exercise_role', 'primary') == 'primary':
+                primary_selected += 1
+
+        return result
+
+    def _pick_exercise_for_movement(self, movement_id: str, role_preference: str = "primary"):
+        candidates = [e for e in self.provider.exercises() if e.movement_pattern == movement_id]
+        if not candidates:
+            return None
+
+        preferred = [e for e in candidates if getattr(e, 'exercise_role', 'primary') == role_preference]
+        if preferred:
+            return preferred[0]
+
+        return candidates[0]
+
+    def _rank_variants(self, exercise_id: str, avoid_equipment: set, prefer_order: list):
+        variants = self.queries.get_variants_for_exercise(exercise_id)
+        if not variants:
+            return []
+
+        preferred = [v for v in variants if v.equipment not in avoid_equipment]
+        avoided = [v for v in variants if v.equipment in avoid_equipment]
+
+        def rank(v):
+            return prefer_order.index(v.equipment) if v.equipment in prefer_order else len(prefer_order)
+
+        preferred.sort(key=rank)
+        avoided.sort(key=rank)
+        return preferred + avoided
+
+    def _pick_variant_with_linked_row(self, exercise_id: str, avoid_equipment: set, prefer_order: list):
+        for variant in self._rank_variants(exercise_id, avoid_equipment, prefer_order):
+            exercise_row = self._get_linked_exercise_row(variant.id)
+            if exercise_row is not None:
+                return variant, exercise_row
+        return None, None
+
+    def _sets_and_reps(self, exercise, training_rules: dict, rep_goal_key: str) -> tuple[int, int]:
+        category = "compound" if getattr(exercise, 'category', 'compound') == "compound" else "isolation"
+        sets = training_rules["sets"][category]["recommended"]
+        reps_range = training_rules["repetitions"][rep_goal_key]["recommended"]
+
+        # التمارين المركبة تأخذ النطاق الأقل للتركيز على القوة/الحجم، والعزل تأخذ النطاق الأعلى
+        if category == "compound":
+            reps = reps_range["minimum"] + 1
+        else:
+            reps = reps_range["maximum"] - 1
+
+        return sets, reps
+
+    def _get_linked_exercise_row(self, variant_id: str) -> Optional[ExerciseTable]:
+        return (
+            self.db.query(ExerciseTable)
+            .filter(ExerciseTable.knowledge_variant_id == variant_id, ExerciseTable.is_active == True)
+            .first()
+        )

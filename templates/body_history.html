@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MyGym - قياسات الجسم</title>
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="icon" href="/static/icon.png" type="image/png">
+    <link rel="apple-touch-icon" href="/static/icon.png">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📏 قياسات الجسم</h1>
+        </header>
+
+        <main>
+            <section class="card">
+                <h2>السجل</h2>
+                <div id="measurements-list">
+                </div>
+                <p id="no-measurements" style="display: none; color: var(--text-secondary); text-align: center; padding: 24px;">
+                    لا توجد قياسات مسجلة بعد. اذهب إلى <a href="/profile-setup">إعداد البروفايل</a> لإضافة قياس.
+                </p>
+            </section>
+
+            <section class="card" style="margin-top: 16px;">
+                <button class="btn-primary" onclick="window.location.href='/profile-setup'">
+                    + إضافة قياس جديد
+                </button>
+            </section>
+        </main>
+    </div>
+
+    <div id="snackbar" class="snackbar"></div>
+
+    <script>
+    function showSnackbar(msg, isError) {
+        const bar = document.getElementById('snackbar');
+        bar.textContent = msg;
+        bar.className = 'snackbar show' + (isError ? ' error' : '');
+        setTimeout(() => { bar.className = 'snackbar'; }, 3000);
+    }
+
+    async function loadMeasurements() {
+        try {
+            const res = await fetch('/api/profile/measurements?limit=30', {
+                headers: localStorage.getItem('mygym_profile_id')
+                    ? { 'X-Profile-Id': localStorage.getItem('mygym_profile_id') }
+                    : {},
+            });
+            if (!res.ok) throw new Error('Failed to load');
+            const measurements = await res.json();
+
+            const list = document.getElementById('measurements-list');
+            const noMsg = document.getElementById('no-measurements');
+
+            if (measurements.length === 0) {
+                list.style.display = 'none';
+                noMsg.style.display = 'block';
+                return;
+            }
+
+            noMsg.style.display = 'none';
+            list.innerHTML = measurements.map(m => `
+                <div class="measurement-card" style="margin-bottom: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 8px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <strong>${m.date}</strong>
+                        <span style="font-size: 0.8em; color: var(--text-secondary);">
+                            ${m.type === 'weekly' ? 'أسبوعي' : 'شهري'}
+                            ${m.goal ? ' • ' + m.goal : ''}
+                        </span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 0.9em;">
+                        ${m.weight ? `<span>⚖️ الوزن: ${m.weight} كجم</span>` : ''}
+                        ${m.body_fat ? `<span>📊 دهون: ${m.body_fat}%</span>` : ''}
+                        ${m.waist ? `<span>📏 خصر: ${m.waist} سم</span>` : ''}
+                        ${m.chest ? `<span>📏 صدر: ${m.chest} سم</span>` : ''}
+                        ${m.hips ? `<span>📏 أوراك: ${m.hips} سم</span>` : ''}
+                        ${m.neck ? `<span>📏 عنق: ${m.neck} سم</span>` : ''}
+                        ${m.left_arm ? `<span>💪 ذراع يسار: ${m.left_arm} سم</span>` : ''}
+                        ${m.right_arm ? `<span>💪 ذراع يمين: ${m.right_arm} سم</span>` : ''}
+                        ${m.left_thigh ? `<span>🦵 فخذ يسار: ${m.left_thigh} سم</span>` : ''}
+                        ${m.right_thigh ? `<span>🦵 فخذ يمين: ${m.right_thigh} سم</span>` : ''}
+                    </div>
+                    ${m.notes ? `<p style="margin-top: 8px; font-size: 0.85em; color: var(--text-secondary);">${m.notes}</p>` : ''}
+                    <button onclick="deleteMeasurement('${m.id}')" style="margin-top: 8px; font-size: 0.8em; color: #ef4444; background: none; border: none; cursor: pointer;">حذف</button>
+                </div>
+            `).join('');
+        } catch (err) {
+            console.error('Failed to load measurements:', err);
+        }
+    }
+
+    async function deleteMeasurement(id) {
+        if (!confirm('هل تريد حذف هذا القياس؟')) return;
+        try {
+            const res = await fetch('/api/profile/measurements/' + id, {
+                method: 'DELETE',
+                headers: localStorage.getItem('mygym_profile_id')
+                    ? { 'X-Profile-Id': localStorage.getItem('mygym_profile_id') }
+                    : {},
+            });
+            if (!res.ok) throw new Error('Failed to delete');
+            showSnackbar('تم الحذف', false);
+            loadMeasurements();
+        } catch (err) {
+            showSnackbar('خطأ في الحذف', true);
+        }
+    }
+
+    loadMeasurements();
+    </script>
+</body>
+</html>

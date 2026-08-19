@@ -1,12 +1,27 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
+import os
 from typing import List, Optional
 from decimal import Decimal
 from pydantic import BaseModel
 
 from src.infrastructure.db.connection import SessionLocal
 from src.services.planner_service import PlannerService
+from src.apis.deps import get_db
+from src.services.generator_service import GeneratorService
+from src.infrastructure.db.models import TrainingProfileTable
+from src.services.evaluator_service import EvaluatorService
+
 
 router = APIRouter(prefix="/api/planner", tags=["planner"])
+
+EXPERIMENTAL_PLANNER_ENABLED = os.getenv(
+    "MYGYM_ENABLE_EXPERIMENTAL_PLANNER", "false"
+).lower() in {"1", "true", "yes"}
+
+
+def require_experimental_planner():
+    if not EXPERIMENTAL_PLANNER_ENABLED:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
 # ========== Pydantic Schemas ==========
 
@@ -486,3 +501,20 @@ def delete_alternative(alternative_id: str):
         return {"message": "Alternative deleted successfully"}
     finally:
         db.close()
+
+
+@router.post("/generate", dependencies=[Depends(require_experimental_planner)])
+def generate_plan(template_id: str = None, db=Depends(get_db)):
+    profile = db.query(TrainingProfileTable).first()
+    if not profile:
+        raise HTTPException(status_code=400, detail="أكمل البروفايل أولاً")
+    plans = GeneratorService(db).generate_plan_for_profile(profile, template_id=template_id)
+    return {"plans": [{"id": p.id, "name": p.name, "day_index": p.day_index} for p in plans]}
+
+
+@router.get("/evaluate/{program_group_id}", dependencies=[Depends(require_experimental_planner)])
+def evaluate_program(program_group_id: str, db=Depends(get_db)):
+    profile = db.query(TrainingProfileTable).first()
+    if not profile:
+        raise HTTPException(status_code=400, detail="أكمل البروفايل أولاً")
+    return EvaluatorService(db).evaluate_program(program_group_id, profile)

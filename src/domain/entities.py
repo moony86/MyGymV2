@@ -78,6 +78,7 @@ class Set(BaseModel):
     weight: Decimal  # بالكيلوجرام كـ Decimal
     reps: int
     rpe: Optional[float] = None
+    rir: Optional[int] = None
     set_type: SetType = SetType.WORKING
 
     @field_validator('weight')

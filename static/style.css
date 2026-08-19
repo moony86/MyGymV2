@@ -456,3 +456,106 @@ background: #eff6ff;
 .history-row:active {
     transform: scale(0.98);
 }
+
+/* =========================================================
+ *  🆕 شريط تمارين الخطة الأفقي الثابت (يحل مشكلة الصفحة الطويلة)
+ * ========================================================= */
+
+.plan-sticky-bar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: white;
+    padding: 12px 0 8px 0;
+    margin: 0 -20px 16px -20px;
+    padding-left: 20px;
+    padding-right: 20px;
+    border-bottom: 1px solid #e5e7eb;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.plan-current-exercise-name {
+    font-weight: 700;
+    font-size: 1.05rem;
+    margin-bottom: 10px;
+    color: #1f2937;
+}
+
+.plan-chips-row {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+
+.plan-chips-row::-webkit-scrollbar {
+    height: 4px;
+}
+.plan-chips-row::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 4px;
+}
+
+.plan-chip {
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: 2px solid #e5e7eb;
+    background: #f9fafb;
+    color: #6b7280;
+    transition: transform 0.1s;
+    position: relative;
+}
+
+.plan-chip:active {
+    transform: scale(0.92);
+}
+
+.plan-chip.is-current {
+    border-color: #2563eb;
+    background: #eff6ff;
+    color: #1e40af;
+}
+
+.plan-chip.is-completed {
+    border-color: #10b981;
+    background: #f0fdf4;
+    color: #059669;
+}
+
+.plan-chip-tooltip {
+    position: absolute;
+    bottom: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.65rem;
+    color: #9ca3af;
+    white-space: nowrap;
+    display: none;
+}
+
+.plan-extra-exercise-btn {
+    background: none;
+    border: 1px dashed #93c5fd;
+    color: #2563eb;
+    border-radius: 8px;
+    padding: 10px;
+    width: 100%;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 12px;
+}
+
+.plan-chip-extra {
+    border-style: dashed;
+}

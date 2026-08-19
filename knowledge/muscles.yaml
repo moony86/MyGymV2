@@ -1,0 +1,284 @@
+version: 1.0
+
+metadata:
+  name: Muscle Library
+  description: >
+    Defines the complete anatomical hierarchy used by the Gym Knowledge Engine.
+    Every exercise must reference muscles from this file only.
+
+muscle_groups:
+
+# ==========================================================
+# UPPER BODY
+# ==========================================================
+
+- id: group.upper_body
+
+  name: Upper Body
+
+  children:
+
+    - group.chest
+    - group.back
+    - group.shoulders
+    - group.arms
+    - group.core
+
+# ----------------------------------------------------------
+
+- id: group.chest
+
+  name: Chest
+
+  parent: group.upper_body
+
+  muscles:
+
+    - muscle.chest.upper
+    - muscle.chest.middle
+    - muscle.chest.lower
+
+# ----------------------------------------------------------
+
+- id: group.back
+
+  name: Back
+
+  parent: group.upper_body
+
+  muscles:
+
+    - muscle.lats
+    - muscle.upper_back
+    - muscle.lower_back
+    - muscle.traps
+
+# ----------------------------------------------------------
+
+- id: group.shoulders
+
+  name: Shoulders
+
+  parent: group.upper_body
+
+  muscles:
+
+    - muscle.front_delts
+    - muscle.side_delts
+    - muscle.rear_delts
+
+# ----------------------------------------------------------
+
+- id: group.arms
+
+  name: Arms
+
+  parent: group.upper_body
+
+  muscles:
+
+    - muscle.biceps
+    - muscle.triceps
+    - muscle.forearms
+
+# ----------------------------------------------------------
+
+- id: group.core
+
+  name: Core
+
+  parent: group.upper_body
+
+  muscles:
+
+    - muscle.abs
+    - muscle.obliques
+    - muscle.transverse_abdominis
+
+# ==========================================================
+# LOWER BODY
+# ==========================================================
+
+- id: group.lower_body
+
+  name: Lower Body
+
+  children:
+
+    - group.legs
+
+# ----------------------------------------------------------
+
+- id: group.legs
+
+  name: Legs
+
+  parent: group.lower_body
+
+  muscles:
+
+    - muscle.quads
+    - muscle.hamstrings
+    - muscle.glutes
+    - muscle.calves
+    - muscle.adductors
+
+# ==========================================================
+# MUSCLE DEFINITIONS
+# ==========================================================
+
+muscles:
+
+# ---------------- CHEST ----------------
+
+- id: muscle.chest.upper
+
+  name: Upper Chest
+
+  group: group.chest
+
+  role: primary
+
+- id: muscle.chest.middle
+
+  name: Middle Chest
+
+  group: group.chest
+
+  role: primary
+
+- id: muscle.chest.lower
+
+  name: Lower Chest
+
+  group: group.chest
+
+  role: primary
+
+# ---------------- BACK ----------------
+
+- id: muscle.lats
+
+  name: Latissimus Dorsi
+
+  short_name: Lats
+
+  group: group.back
+
+- id: muscle.upper_back
+
+  name: Upper Back
+
+  group: group.back
+
+- id: muscle.lower_back
+
+  name: Lower Back
+
+  anatomical_name: Erector Spinae
+
+  group: group.back
+
+- id: muscle.traps
+
+  name: Trapezius
+
+  short_name: Traps
+
+  group: group.back
+
+# ---------------- SHOULDERS ----------------
+
+- id: muscle.front_delts
+
+  name: Front Deltoids
+
+  group: group.shoulders
+
+- id: muscle.side_delts
+
+  name: Side Deltoids
+
+  group: group.shoulders
+
+- id: muscle.rear_delts
+
+  name: Rear Deltoids
+
+  group: group.shoulders
+
+# ---------------- ARMS ----------------
+
+- id: muscle.biceps
+
+  name: Biceps
+
+  group: group.arms
+
+- id: muscle.triceps
+
+  name: Triceps
+
+  group: group.arms
+
+- id: muscle.forearms
+
+  name: Forearms
+
+  group: group.arms
+
+# ---------------- CORE ----------------
+
+- id: muscle.abs
+
+  name: Rectus Abdominis
+
+  short_name: Abs
+
+  group: group.core
+
+- id: muscle.obliques
+
+  name: Obliques
+
+  group: group.core
+
+- id: muscle.transverse_abdominis
+
+  name: Transverse Abdominis
+
+  short_name: TVA
+
+  group: group.core
+
+# ---------------- LEGS ----------------
+
+- id: muscle.quads
+
+  name: Quadriceps
+
+  group: group.legs
+
+- id: muscle.hamstrings
+
+  name: Hamstrings
+
+  group: group.legs
+
+- id: muscle.glutes
+
+  name: Glutes
+
+  group: group.legs
+
+- id: muscle.calves
+
+  name: Calves
+
+  group: group.legs
+
+- id: muscle.adductors
+
+  name: Adductors
+
+  group: group.legs

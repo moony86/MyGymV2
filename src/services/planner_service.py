@@ -19,12 +19,14 @@ from src.infrastructure.db.models import (
 from src.domain.entities import utc_now
 from src.services.session_service import SessionService
 from src.domain.enums import SessionStatus
+from src.domain.profile_context import get_current_profile_id
 
 
 class PlannerService:
-    def __init__(self, db_session: DbSession):
+    def __init__(self, db_session: DbSession, profile_id: Optional[str] = None):
         self.db = db_session
-        self.session_service = SessionService(db_session)
+        self.profile_id = profile_id or get_current_profile_id()
+        self.session_service = SessionService(db_session, self.profile_id)
 
     # ========== إدارة الخطط ==========
 
@@ -33,6 +35,7 @@ class PlannerService:
             id=str(uuid6.uuid7()),
             name=name,
             description=description,
+            profile_id=self.profile_id,
             created_at=utc_now()
         )
         self.db.add(plan)
@@ -41,12 +44,16 @@ class PlannerService:
 
     def get_all_plans(self, include_disabled: bool = False) -> List[WorkoutPlanTable]:
         query = self.db.query(WorkoutPlanTable)
+        query = query.filter(WorkoutPlanTable.profile_id == self.profile_id)
         if not include_disabled:
             query = query.filter(WorkoutPlanTable.enabled == True)
         return query.order_by(WorkoutPlanTable.name).all()
 
     def get_plan_by_id(self, plan_id: str) -> Optional[WorkoutPlanTable]:
-        return self.db.query(WorkoutPlanTable).filter(WorkoutPlanTable.id == plan_id).first()
+        return self.db.query(WorkoutPlanTable).filter(
+            WorkoutPlanTable.id == plan_id,
+            WorkoutPlanTable.profile_id == self.profile_id,
+        ).first()
 
     def enable_plan(self, plan_id: str, enabled: bool) -> bool:
         plan = self.get_plan_by_id(plan_id)
@@ -240,7 +247,8 @@ class PlannerService:
 
         # 1. نبحث عن خطط نشطة
         active_plans = self.db.query(WorkoutPlanTable).filter(
-            WorkoutPlanTable.enabled == True
+            WorkoutPlanTable.enabled == True,
+            WorkoutPlanTable.profile_id == self.profile_id,
         ).all()
 
         for plan in active_plans:

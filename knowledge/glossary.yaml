@@ -1,0 +1,317 @@
+version: 1.0
+
+metadata:
+  name: Gym Knowledge Glossary
+  description: >
+    Official domain terminology used by the Gym Knowledge Engine.
+    Every entity in the project must use these definitions.
+    This file is the single source of truth for domain vocabulary.
+
+# --------------------------------------------------------
+# USER
+# --------------------------------------------------------
+
+user:
+  definition: >
+    The person using the application.
+
+user_profile:
+  definition: >
+    Static information about the user that rarely changes.
+
+training_profile:
+  definition: >
+    Training-related information that may change over time.
+
+# --------------------------------------------------------
+# WORKOUT
+# --------------------------------------------------------
+
+workout_plan:
+  definition: >
+    A complete training program spanning multiple weeks.
+
+workout_day:
+  definition: >
+    One scheduled training session inside a workout plan.
+
+exercise_slot:
+  definition: >
+    A position inside a workout day reserved for one exercise.
+
+session:
+  definition: >
+    One performed workout.
+
+training_cycle:
+  definition: >
+    A continuous period following the same workout plan.
+
+# --------------------------------------------------------
+# TEMPLATE
+# --------------------------------------------------------
+
+template:
+  definition: >
+    A predefined workout structure.
+
+examples:
+  - Full Body
+  - Upper Lower
+  - Push Pull Legs
+
+# --------------------------------------------------------
+# MUSCLES
+# --------------------------------------------------------
+
+muscle_group:
+  definition: >
+    High-level anatomical grouping.
+
+examples:
+  - Chest
+  - Back
+  - Legs
+  - Arms
+  - Shoulders
+  - Core
+
+muscle:
+  definition: >
+    A specific target muscle.
+
+examples:
+  - Upper Chest
+  - Side Delts
+  - Hamstrings
+
+primary_muscle:
+  definition: >
+    Muscle receiving the greatest training stimulus.
+
+secondary_muscle:
+  definition: >
+    Muscle receiving meaningful indirect stimulus.
+
+stabilizer:
+  definition: >
+    Muscle used primarily for stabilization.
+
+# --------------------------------------------------------
+# EXERCISES
+# --------------------------------------------------------
+
+exercise:
+  definition: >
+    Abstract movement independent of equipment.
+
+exercise_variant:
+  definition: >
+    Specific implementation of an exercise.
+
+example:
+
+  exercise:
+    Horizontal Press
+
+  variants:
+    - Machine
+    - Barbell
+    - Dumbbell
+    - Smith Machine
+
+compound_exercise:
+  definition: >
+    Exercise involving multiple joints.
+
+isolation_exercise:
+  definition: >
+    Exercise primarily involving one joint.
+
+unilateral:
+  definition: >
+    Exercise performed one side at a time.
+
+bilateral:
+  definition: >
+    Exercise performed with both limbs together.
+
+# --------------------------------------------------------
+# MOVEMENT
+# --------------------------------------------------------
+
+movement_pattern:
+  definition: >
+    Biomechanical movement category.
+
+examples:
+  - Horizontal Push
+  - Horizontal Pull
+  - Vertical Push
+  - Vertical Pull
+  - Squat
+  - Hip Hinge
+  - Knee Extension
+  - Knee Flexion
+  - Calf Extension
+
+# --------------------------------------------------------
+# EQUIPMENT
+# --------------------------------------------------------
+
+equipment:
+  definition: >
+    Physical equipment required.
+
+equipment_category:
+  definition: >
+    General equipment classification.
+
+examples:
+  - Machine
+  - Cable
+  - Dumbbell
+  - Barbell
+  - Bodyweight
+
+# --------------------------------------------------------
+# TRAINING
+# --------------------------------------------------------
+
+set:
+  definition: >
+    One group of repetitions.
+
+rep:
+  definition: >
+    One completed repetition.
+
+working_set:
+  definition: >
+    A set intended to stimulate adaptation.
+
+warmup_set:
+  definition: >
+    A preparation set.
+
+volume:
+  definition: >
+    Total weekly working sets.
+
+frequency:
+  definition: >
+    Number of training days a muscle receives direct work.
+
+intensity:
+  definition: >
+    Relative effort or load.
+
+exercise_order:
+  definition: >
+    Position of an exercise inside a workout.
+
+rest_time:
+  definition: >
+    Recovery time between working sets.
+
+session_duration:
+  definition: >
+    Total workout time.
+
+fatigue:
+  definition: >
+    Estimated systemic recovery demand.
+
+recovery:
+  definition: >
+    Ability to recover before the next session.
+
+# --------------------------------------------------------
+# GOALS
+# --------------------------------------------------------
+
+goal:
+
+  definition: >
+    Primary training objective.
+
+values:
+  - hypertrophy
+  - strength
+  - endurance
+  - general_fitness
+
+# --------------------------------------------------------
+# EXPERIENCE
+# --------------------------------------------------------
+
+experience_level:
+
+  values:
+    - beginner
+    - intermediate
+    - advanced
+
+# --------------------------------------------------------
+# RULES
+# --------------------------------------------------------
+
+training_rule:
+  definition: >
+    Evidence-based recommendation used by the Generator and Evaluator.
+
+constraint:
+  definition: >
+    Mandatory requirement.
+
+recommendation:
+  definition: >
+    Suggested practice.
+
+warning:
+  definition: >
+    Indicates a non-optimal configuration.
+
+critical:
+  definition: >
+    Indicates a configuration that should not be generated.
+
+# --------------------------------------------------------
+# METRICS
+# --------------------------------------------------------
+
+score:
+  definition: >
+    Numerical evaluation.
+
+priority:
+  definition: >
+    Rule execution priority.
+
+confidence:
+  definition: >
+    Confidence level assigned to a recommendation.
+
+# --------------------------------------------------------
+# KNOWLEDGE ENGINE
+# --------------------------------------------------------
+
+knowledge_base:
+  definition: >
+    Collection of structured domain knowledge.
+
+generator:
+  definition: >
+    Engine responsible for creating workout plans.
+
+evaluator:
+  definition: >
+    Engine responsible for analyzing workout plans.
+
+performance_analyzer:
+  definition: >
+    Engine responsible for evaluating training results.
+
+rule_engine:
+  definition: >
+    Component that executes decision rules using the knowledge base.

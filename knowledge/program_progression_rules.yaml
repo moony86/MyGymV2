@@ -1,0 +1,144 @@
+version: 1.0
+
+metadata:
+  name: Progression Rules
+
+  description: >
+    Defines progression principles used by the Gym Knowledge Engine.
+    These rules describe when and how a training plan should progress.
+
+# ==========================================================
+# PROGRESSION PRIORITY
+# ==========================================================
+
+progression_order:
+
+  - repetitions
+
+  - load
+
+  - sets
+
+# ==========================================================
+# DOUBLE PROGRESSION
+# ==========================================================
+
+double_progression:
+
+  enabled: true
+
+  increase_load_when:
+
+    reached_top_rep_range: true
+
+    all_sets_completed: true
+
+    technique_maintained: true
+
+# ==========================================================
+# LOAD INCREASE
+# ==========================================================
+
+load_progression:
+
+  upper_body:
+
+    recommended_percent:
+
+      minimum: 2.5
+
+      maximum: 5
+
+  lower_body:
+
+    recommended_percent:
+
+      minimum: 5
+
+      maximum: 10
+
+# ==========================================================
+# SET PROGRESSION
+# ==========================================================
+
+set_progression:
+
+  increase_when:
+
+    volume_below_target: true
+
+  maximum_sets_per_exercise: 5
+
+# ==========================================================
+# EXERCISE ROTATION
+# ==========================================================
+
+exercise_rotation:
+
+  recommended_after_weeks:
+
+    minimum: 8
+
+    maximum: 12
+
+# ==========================================================
+# PLATEAU
+# ==========================================================
+
+plateau:
+
+  no_progress_for_weeks: 3
+
+  recommended_action:
+
+    - reduce_fatigue
+
+    - review_volume
+
+    - review_recovery
+
+# ==========================================================
+# DELOAD
+# ==========================================================
+
+deload:
+
+  recommended_after_weeks:
+
+    minimum: 8
+
+    maximum: 12
+
+  reduce_volume_percent: 50
+
+  reduce_load_percent: 10
+
+# ==========================================================
+# FAILURE
+# ==========================================================
+
+training_failure:
+
+  beginners:
+
+    avoid_regular_failure: true
+
+  intermediate:
+
+    allow_last_set_only: true
+
+# ==========================================================
+# CONSISTENCY
+# ==========================================================
+
+consistency:
+
+  minimum_adherence_percent: 80
+
+# ==========================================================
+# PLAN REVIEW
+# ==========================================================
+
+plan_review:
+
+  recommended_every_weeks: 8

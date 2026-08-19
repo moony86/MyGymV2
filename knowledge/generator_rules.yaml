@@ -1,0 +1,121 @@
+version: 1.0
+
+metadata:
+  name: Generator Rules
+
+  description: >
+    Decision rules used by the workout plan generator.
+    This file defines how templates, exercises,
+    and movement patterns are selected.
+
+# ==========================================================
+# EXERCISE PRIORITY
+# ==========================================================
+
+exercise_priority:
+
+  primary_before_accessory: true
+
+  compound_before_isolation: true
+
+# ==========================================================
+# MOVEMENT COVERAGE
+# ==========================================================
+
+movement_selection:
+
+  required:
+
+    - movement.horizontal_push
+
+    - movement.horizontal_pull
+
+    - movement.vertical_push
+
+    - movement.vertical_pull
+
+    - movement.squat
+
+    - movement.hip_hinge
+
+# ==========================================================
+# VARIANT SELECTION
+# ==========================================================
+
+variant_selection:
+
+  beginner:
+
+    prefer:
+
+      - equipment.machine
+
+      - equipment.cable
+
+      - equipment.dumbbell
+
+    avoid:
+
+      - equipment.barbell
+
+  intermediate:
+
+    allow_all: true
+
+# ==========================================================
+# EXERCISE LIMITS
+# ==========================================================
+
+exercise_limits:
+
+  minimum_per_session: 4
+
+  recommended:
+
+    low: 5
+
+    high: 7
+
+  maximum: 8
+
+# ==========================================================
+# DUPLICATION
+# ==========================================================
+
+duplication:
+
+  allow_same_variant_twice_per_week: false
+
+  allow_same_exercise_twice_per_week: true
+
+# ==========================================================
+# BALANCE
+# ==========================================================
+
+balance:
+
+  distribute_volume_evenly: true
+
+  avoid_same_primary_muscle_consecutively: true
+
+# ==========================================================
+# SESSION TIME
+# ==========================================================
+
+time_constraints:
+
+  stop_when_session_exceeds_minutes: 90
+
+# ==========================================================
+# SAFETY
+# ==========================================================
+
+safety:
+
+  beginners:
+
+    avoid_high_skill_variants: true
+
+    prefer_machine_variants: true
+
+    avoid_high_fatigue_variants: true

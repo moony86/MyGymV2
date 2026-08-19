@@ -1,0 +1,372 @@
+version: 1.0
+
+metadata:
+  name: Exercise Library
+  description: >
+    Defines abstract exercises recognized by the Gym Knowledge Engine.
+
+    This file does NOT contain equipment-specific implementations.
+
+    Example
+
+    Horizontal Press
+
+    NOT
+
+    Barbell Bench Press
+
+exercises:
+
+# ==========================================================
+# CHEST
+# ==========================================================
+
+- id: exercise.horizontal_press
+
+  name: Horizontal Press
+
+  movement_pattern: movement.horizontal_push
+
+  category: compound
+
+  primary_muscles:
+
+    - muscle.chest.middle
+
+  secondary_muscles:
+
+    - muscle.front_delts
+    - muscle.triceps
+
+  exercise_role: primary
+
+  beginner_friendly: true
+
+  unilateral: false
+
+  estimated_time_minutes: 3
+
+# ----------------------------------------------------------
+
+- id: exercise.incline_press
+
+  name: Incline Press
+
+  movement_pattern: movement.incline_push
+
+  category: compound
+
+  primary_muscles:
+
+    - muscle.chest.upper
+
+  secondary_muscles:
+
+    - muscle.front_delts
+    - muscle.triceps
+
+  exercise_role: primary
+
+  beginner_friendly: true
+
+  unilateral: false
+
+  estimated_time_minutes: 3
+
+# ----------------------------------------------------------
+
+- id: exercise.chest_fly
+
+  name: Chest Fly
+
+  movement_pattern: movement.horizontal_push
+
+  category: isolation
+
+  primary_muscles:
+
+    - muscle.chest.middle
+
+  secondary_muscles: []
+
+  exercise_role: accessory
+
+  beginner_friendly: true
+
+  unilateral: false
+
+  estimated_time_minutes: 2
+
+# ==========================================================
+# BACK
+# ==========================================================
+
+- id: exercise.vertical_pull
+
+  name: Vertical Pull
+
+  movement_pattern: movement.vertical_pull
+
+  category: compound
+
+  primary_muscles:
+
+    - muscle.lats
+
+  secondary_muscles:
+
+    - muscle.biceps
+    - muscle.upper_back
+
+  exercise_role: primary
+
+  beginner_friendly: true
+
+# ----------------------------------------------------------
+
+- id: exercise.horizontal_row
+
+  name: Horizontal Row
+
+  movement_pattern: movement.horizontal_pull
+
+  category: compound
+
+  primary_muscles:
+
+    - muscle.upper_back
+
+  secondary_muscles:
+
+    - muscle.lats
+    - muscle.biceps
+    - muscle.rear_delts
+
+  exercise_role: primary
+
+  beginner_friendly: true
+
+# ----------------------------------------------------------
+
+- id: exercise.hip_hinge
+
+  name: Hip Hinge
+
+  movement_pattern: movement.hip_hinge
+
+  category: compound
+
+  primary_muscles:
+
+    - muscle.glutes
+    - muscle.hamstrings
+
+  secondary_muscles:
+
+    - muscle.lower_back
+
+  exercise_role: primary
+
+  beginner_friendly: false
+
+# ==========================================================
+# SHOULDERS
+# ==========================================================
+
+- id: exercise.overhead_press
+
+  name: Overhead Press
+
+  movement_pattern: movement.vertical_push
+
+  category: compound
+
+  primary_muscles:
+
+    - muscle.front_delts
+
+  secondary_muscles:
+
+    - muscle.side_delts
+    - muscle.triceps
+
+  exercise_role: primary
+
+  beginner_friendly: true
+
+# ----------------------------------------------------------
+
+- id: exercise.lateral_raise
+
+  name: Lateral Raise
+
+  movement_pattern: movement.lateral_raise
+
+  category: isolation
+
+  primary_muscles:
+
+    - muscle.side_delts
+
+  secondary_muscles: []
+
+  exercise_role: accessory
+
+# ----------------------------------------------------------
+
+- id: exercise.rear_delt_fly
+
+  name: Rear Delt Fly
+
+  movement_pattern: movement.rear_delt
+
+  category: isolation
+
+  primary_muscles:
+
+    - muscle.rear_delts
+
+  secondary_muscles:
+
+    - muscle.upper_back
+
+  exercise_role: accessory
+
+# ==========================================================
+# ARMS
+# ==========================================================
+
+- id: exercise.biceps_curl
+
+  name: Biceps Curl
+
+  movement_pattern: movement.biceps_curl
+
+  category: isolation
+
+  primary_muscles:
+
+    - muscle.biceps
+
+# ----------------------------------------------------------
+
+- id: exercise.triceps_extension
+
+  name: Triceps Extension
+
+  movement_pattern: movement.triceps_extension
+
+  category: isolation
+
+  primary_muscles:
+
+    - muscle.triceps
+
+# ==========================================================
+# LEGS
+# ==========================================================
+
+- id: exercise.squat
+
+  name: Squat
+
+  movement_pattern: movement.squat
+
+  category: compound
+
+  primary_muscles:
+
+    - muscle.quads
+
+  secondary_muscles:
+
+    - muscle.glutes
+    - muscle.adductors
+
+  exercise_role: primary
+
+# ----------------------------------------------------------
+
+- id: exercise.knee_extension
+
+  name: Knee Extension
+
+  movement_pattern: movement.knee_extension
+
+  category: isolation
+
+  primary_muscles:
+
+    - muscle.quads
+
+# ----------------------------------------------------------
+
+- id: exercise.knee_flexion
+
+  name: Knee Flexion
+
+  movement_pattern: movement.knee_flexion
+
+  category: isolation
+
+  primary_muscles:
+
+    - muscle.hamstrings
+
+# ----------------------------------------------------------
+
+- id: exercise.calf_raise
+
+  name: Calf Raise
+
+  movement_pattern: movement.calf_extension
+
+  category: isolation
+
+  primary_muscles:
+
+    - muscle.calves
+
+# ==========================================================
+# CORE
+# ==========================================================
+
+- id: exercise.ab_crunch
+
+  name: Ab Crunch
+
+  movement_pattern: movement.core_flexion
+
+  category: isolation
+
+  primary_muscles:
+
+    - muscle.abs
+
+# ----------------------------------------------------------
+
+- id: exercise.oblique_rotation
+
+  name: Oblique Rotation
+
+  movement_pattern: movement.core_rotation
+
+  category: isolation
+
+  primary_muscles:
+
+    - muscle.obliques
+
+# ----------------------------------------------------------
+
+- id: exercise.core_stability
+
+  name: Core Stability
+
+  movement_pattern: movement.core_stability
+
+  category: compound
+
+  primary_muscles:
+
+    - muscle.transverse_abdominis

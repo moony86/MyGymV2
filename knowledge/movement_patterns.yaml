@@ -1,0 +1,464 @@
+version: 1.0
+
+metadata:
+  name: Movement Pattern Library
+  description: >
+    Defines every movement pattern recognized by the Gym Knowledge Engine.
+    Exercises never exist independently.
+    Every exercise must belong to exactly one primary movement pattern.
+
+movement_patterns:
+
+# ==========================================================
+# UPPER BODY PUSH
+# ==========================================================
+
+- id: movement.horizontal_push
+
+  name: Horizontal Push
+
+  category: upper_body
+
+  description: >
+    Pressing movement away from the torso on a horizontal plane.
+
+  primary_muscles:
+
+    - muscle.chest.middle
+
+  secondary_muscles:
+
+    - muscle.front_delts
+    - muscle.triceps
+
+  exercise_role:
+
+    primary
+
+  movement_type:
+
+    compound
+
+  recommended_frequency:
+
+    minimum: 2
+
+# ----------------------------------------------------------
+
+- id: movement.incline_push
+
+  name: Incline Push
+
+  category: upper_body
+
+  description: >
+    Pressing movement emphasizing the clavicular chest.
+
+  primary_muscles:
+
+    - muscle.chest.upper
+
+  secondary_muscles:
+
+    - muscle.front_delts
+    - muscle.triceps
+
+  movement_type:
+
+    compound
+
+  exercise_role:
+
+    primary
+
+# ----------------------------------------------------------
+
+- id: movement.vertical_push
+
+  name: Vertical Push
+
+  category: upper_body
+
+  description: >
+    Overhead pressing movement.
+
+  primary_muscles:
+
+    - muscle.side_delts
+    - muscle.front_delts
+
+  secondary_muscles:
+
+    - muscle.triceps
+    - muscle.chest.upper
+
+  movement_type:
+
+    compound
+
+  exercise_role:
+
+    primary
+
+# ==========================================================
+# UPPER BODY PULL
+# ==========================================================
+
+- id: movement.vertical_pull
+
+  name: Vertical Pull
+
+  category: upper_body
+
+  description: >
+    Pulling movement from overhead.
+
+  primary_muscles:
+
+    - muscle.lats
+
+  secondary_muscles:
+
+    - muscle.biceps
+    - muscle.upper_back
+    - muscle.rear_delts
+
+  movement_type:
+
+    compound
+
+  exercise_role:
+
+    primary
+
+# ----------------------------------------------------------
+
+- id: movement.horizontal_pull
+
+  name: Horizontal Pull
+
+  category: upper_body
+
+  description: >
+    Horizontal rowing movement.
+
+  primary_muscles:
+
+    - muscle.upper_back
+
+  secondary_muscles:
+
+    - muscle.lats
+    - muscle.biceps
+    - muscle.rear_delts
+
+  movement_type:
+
+    compound
+
+  exercise_role:
+
+    primary
+
+# ==========================================================
+# SHOULDERS
+# ==========================================================
+
+- id: movement.lateral_raise
+
+  name: Lateral Raise
+
+  category: upper_body
+
+  description: >
+    Shoulder abduction emphasizing side delts.
+
+  primary_muscles:
+
+    - muscle.side_delts
+
+  secondary_muscles: []
+
+  movement_type:
+
+    isolation
+
+  exercise_role:
+
+    accessory
+
+# ----------------------------------------------------------
+
+- id: movement.rear_delt
+
+  name: Rear Delt Fly
+
+  category: upper_body
+
+  description: >
+    Horizontal shoulder abduction.
+
+  primary_muscles:
+
+    - muscle.rear_delts
+
+  secondary_muscles:
+
+    - muscle.upper_back
+
+  movement_type:
+
+    isolation
+
+  exercise_role:
+
+    accessory
+
+# ==========================================================
+# ARMS
+# ==========================================================
+
+- id: movement.biceps_curl
+
+  name: Biceps Curl
+
+  category: upper_body
+
+  description: >
+    Elbow flexion movement.
+
+  primary_muscles:
+
+    - muscle.biceps
+
+  secondary_muscles:
+
+    - muscle.forearms
+
+  movement_type:
+
+    isolation
+
+  exercise_role:
+
+    accessory
+
+# ----------------------------------------------------------
+
+- id: movement.triceps_extension
+
+  name: Triceps Extension
+
+  category: upper_body
+
+  description: >
+    Elbow extension movement.
+
+  primary_muscles:
+
+    - muscle.triceps
+
+  secondary_muscles: []
+
+  movement_type:
+
+    isolation
+
+  exercise_role:
+
+    accessory
+
+# ==========================================================
+# LOWER BODY
+# ==========================================================
+
+- id: movement.squat
+
+  name: Squat
+
+  category: lower_body
+
+  description: >
+    Knee-dominant lower-body movement.
+
+  primary_muscles:
+
+    - muscle.quads
+
+  secondary_muscles:
+
+    - muscle.glutes
+    - muscle.adductors
+
+  movement_type:
+
+    compound
+
+  exercise_role:
+
+    primary
+
+# ----------------------------------------------------------
+
+- id: movement.knee_extension
+
+  name: Knee Extension
+
+  category: lower_body
+
+  description: >
+    Isolation movement for quadriceps.
+
+  primary_muscles:
+
+    - muscle.quads
+
+  secondary_muscles: []
+
+  movement_type:
+
+    isolation
+
+  exercise_role:
+
+    accessory
+
+# ----------------------------------------------------------
+
+- id: movement.knee_flexion
+
+  name: Knee Flexion
+
+  category: lower_body
+
+  description: >
+    Isolation movement for hamstrings.
+
+  primary_muscles:
+
+    - muscle.hamstrings
+
+  secondary_muscles: []
+
+  movement_type:
+
+    isolation
+
+  exercise_role:
+
+    accessory
+
+# ----------------------------------------------------------
+
+- id: movement.hip_hinge
+
+  name: Hip Hinge
+
+  category: lower_body
+
+  description: >
+    Hip-dominant posterior chain movement.
+
+  primary_muscles:
+
+    - muscle.glutes
+    - muscle.hamstrings
+
+  secondary_muscles:
+
+    - muscle.lower_back
+
+  movement_type:
+
+    compound
+
+  exercise_role:
+
+    primary
+
+# ----------------------------------------------------------
+
+- id: movement.calf_extension
+
+  name: Calf Extension
+
+  category: lower_body
+
+  description: >
+    Plantar flexion movement.
+
+  primary_muscles:
+
+    - muscle.calves
+
+  secondary_muscles: []
+
+  movement_type:
+
+    isolation
+
+  exercise_role:
+
+    accessory
+
+# ==========================================================
+# CORE
+# ==========================================================
+
+- id: movement.core_flexion
+
+  name: Core Flexion
+
+  category: core
+
+  primary_muscles:
+
+    - muscle.abs
+
+  secondary_muscles: []
+
+  movement_type:
+
+    isolation
+
+# ----------------------------------------------------------
+
+- id: movement.core_rotation
+
+  name: Core Rotation
+
+  category: core
+
+  primary_muscles:
+
+    - muscle.obliques
+
+  secondary_muscles:
+
+    - muscle.abs
+
+  movement_type:
+
+    isolation
+
+# ----------------------------------------------------------
+
+- id: movement.core_stability
+
+  name: Core Stability
+
+  category: core
+
+  primary_muscles:
+
+    - muscle.abs
+    - muscle.transverse_abdominis
+
+  secondary_muscles:
+
+    - muscle.lower_back
+    - muscle.glutes
+
+  movement_type:
+
+    compound

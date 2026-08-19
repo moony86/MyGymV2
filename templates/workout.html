@@ -25,11 +25,22 @@
                 </div>
 				<!-- قسم تنفيذ الخطة -->
 				<section id="planned-section" class="card" style="display: none;">
-					<h2 id="plan-name-display">📋 الخطة: </h2>
-					<div id="planned-exercises-list"></div>
+					<div class="plan-sticky-bar">
+						<div id="plan-current-exercise-name" class="plan-current-exercise-name"></div>
+						<div id="plan-chips-row" class="plan-chips-row"></div>
+					</div>
+					<button class="plan-extra-exercise-btn" onclick="toggleExtraExercise()">➕ تمرين إضافي (خارج الخطة)</button>
 					<div style="margin-top: 16px; display: flex; gap: 12px;">
 						<button class="btn-secondary" onclick="cancelPlannedSession()">🔙 إلغاء الخطة</button>
 					</div>
+				</section>
+
+				<!-- قسم إضافة تمرين حر أثناء تنفيذ خطة (لا يؤثر على تتبع تقدم الخطة) -->
+				<section id="extra-exercise-section" class="card" style="display: none; margin-top: 12px;">
+					<label>اختر تمرين إضافي</label>
+					<select id="extra-exercise-select" onchange="handleExtraExerciseChange()">
+						<option value="">اختر تمرين...</option>
+					</select>
 				</section>
 
                 <!-- جدول الجلسات الديناميكي للتمرين المختار -->
@@ -78,6 +89,11 @@
 
     <div id="snackbar" class="snackbar"></div>
 
-    <script src="/static/app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/sw.js');
+        }
+    </script>
+    <script src="/static/app.js?v=3"></script>
 </body>
 </html>

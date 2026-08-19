@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MyGym Pro Core - البروفايل</title>
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="icon" href="/static/icon.png" type="image/png">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏋️ من أنت؟</h1>
+        </header>
+
+        <main>
+            <section class="card">
+                <h2>أخبرنا عنك قبل ما نبدأ</h2>
+
+                <div class="exercise-select">
+                    <label>الجنس</label>
+                    <select id="p-sex">
+                        <option value="MALE">ذكر</option>
+                        <option value="FEMALE">أنثى</option>
+                    </select>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-group">
+                        <label>سنة الميلاد</label>
+                        <input type="number" id="p-birth-year" placeholder="1998">
+                    </div>
+                    <div class="input-group">
+                        <label>الطول (سم)</label>
+                        <input type="number" id="p-height" placeholder="178">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>الوزن الحالي (كجم)</label>
+                    <input type="number" id="p-weight" placeholder="80" step="0.1">
+                </div>
+
+                <div class="exercise-select">
+                    <label>مستوى الخبرة</label>
+                    <select id="p-experience">
+                        <option value="BEGINNER">مبتدئ</option>
+                        <option value="INTERMEDIATE">متوسط</option>
+                        <option value="ADVANCED">متقدم</option>
+                    </select>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-group">
+                        <label>أيام التدريب أسبوعيًا</label>
+                        <input type="number" id="p-days" placeholder="3" min="1" max="7">
+                    </div>
+                    <div class="input-group">
+                        <label>مدة الحصة (دقيقة)</label>
+                        <input type="number" id="p-duration" placeholder="60">
+                    </div>
+                </div>
+
+                <div class="exercise-select">
+                    <label>الهدف</label>
+                    <select id="p-goal">
+                        <option value="HYPERTROPHY">تضخيم</option>
+                        <option value="STRENGTH">قوة</option>
+                        <option value="FAT_LOSS">حرق دهون</option>
+                        <option value="GENERAL_FITNESS">لياقة عامة</option>
+                    </select>
+                </div>
+
+                <button class="btn-primary btn-large" onclick="submitProfile()">حفظ ومتابعة</button>
+
+                <hr style="margin: 24px 0; border: none; border-top: 1px solid var(--border);">
+
+                <div class="section-toggle" onclick="toggleBodyTracking()">
+                    <h3 style="margin: 0; display: inline;">📏 تتبع قياسات الجسم</h3>
+                    <span id="body-tracking-arrow" style="float: left; transition: transform 0.2s;">▸</span>
+                    <p style="color: var(--text-secondary); font-size: 0.85em; margin-top: 4px;">
+                        إضافة بيانات تفصيلية حول جسمك (اختياري) — تظهر فقط عند الرغبة
+                    </p>
+                </div>
+
+                <div id="body-tracking-section" style="display: none; margin-top: 16px;">
+                    <div class="exercise-select">
+                        <label>نوع القياس</label>
+                        <select id="bm-type">
+                            <option value="weekly">أسبوعي</option>
+                            <option value="monthly">شهري</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label>الهدف</label>
+                        <select id="bm-goal">
+                            <option value="">بدون هدف</option>
+                            <option value="fat_loss">حرق دهون</option>
+                            <option value="muscle_gain">زيادة عضل</option>
+                            <option value="maintain">الحفاظ</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label>الوزن (كجم)</label>
+                        <input type="number" id="bm-weight" placeholder="80" step="0.1">
+                    </div>
+
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>الخصر</label>
+                            <input type="number" id="bm-waist" placeholder="0" step="0.1">
+                        </div>
+                        <div class="input-group">
+                            <label>الخصر الضيق</label>
+                            <input type="number" id="bm-narrow-waist" placeholder="0" step="0.1">
+                        </div>
+                    </div>
+
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>الصدر</label>
+                            <input type="number" id="bm-chest" placeholder="0" step="0.1">
+                        </div>
+                        <div class="input-group">
+                            <label>الأوراك</label>
+                            <input type="number" id="bm-hips" placeholder="0" step="0.1">
+                        </div>
+                    </div>
+
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>ذراع يسار (سم)</label>
+                            <input type="number" id="bm-left-arm" placeholder="0" step="0.1">
+                        </div>
+                        <div class="input-group">
+                            <label>ذراع يمين (سم)</label>
+                            <input type="number" id="bm-right-arm" placeholder="0" step="0.1">
+                        </div>
+                    </div>
+
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>فخذ يسار (سم)</label>
+                            <input type="number" id="bm-left-thigh" placeholder="0" step="0.1">
+                        </div>
+                        <div class="input-group">
+                            <label>فخذ يمين (سم)</label>
+                            <input type="number" id="bm-right-thigh" placeholder="0" step="0.1">
+                        </div>
+                    </div>
+
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>العنق (سم)</label>
+                            <input type="number" id="bm-neck" placeholder="0" step="0.1">
+                        </div>
+                        <div class="input-group">
+                            <label>نسبة الدهون %</label>
+                            <input type="number" id="bm-body-fat" placeholder="0" step="0.1">
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>ملاحظات</label>
+                        <textarea id="bm-notes" rows="2" placeholder="أي ملاحظات إضافية..."></textarea>
+                    </div>
+
+                    <div style="margin-top: 8px;">
+                        <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                            <input type="checkbox" id="bm-morning"> صباحًا
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                            <input type="checkbox" id="bm-after-bath"> بعد الاستحمام
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                            <input type="checkbox" id="bm-fasting"> صائم
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="bm-same-tape"> نفس الشريط
+                        </label>
+                    </div>
+
+                    <button class="btn-primary" onclick="submitBodyMeasurement()" style="margin-top: 12px;">
+                        حفظ القياس
+                    </button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="snackbar" class="snackbar"></div>
+
+    <script>
+    function showSnackbar(msg, isError) {
+        const bar = document.getElementById('snackbar');
+        bar.textContent = msg;
+        bar.className = 'snackbar show' + (isError ? ' error' : '');
+        setTimeout(() => { bar.className = 'snackbar'; }, 3000);
+    }
+
+    function toggleBodyTracking() {
+        const section = document.getElementById('body-tracking-section');
+        const arrow = document.getElementById('body-tracking-arrow');
+        const isHidden = section.style.display === 'none';
+        section.style.display = isHidden ? 'block' : 'none';
+        arrow.style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';
+    }
+
+    async function submitBodyMeasurement() {
+        const conditions = {
+            morning: document.getElementById('bm-morning').checked,
+            after_bath: document.getElementById('bm-after-bath').checked,
+            fasting: document.getElementById('bm-fasting').checked,
+            same_tape: document.getElementById('bm-same-tape').checked,
+        };
+
+        const payload = {
+            date: document.getElementById('p-birth-year').value ? new Date().toISOString().split('T')[0] : '',
+            type: document.getElementById('bm-type').value,
+            goal: document.getElementById('bm-goal').value || null,
+            weight: parseFloat(document.getElementById('bm-weight').value) || null,
+            waist: parseFloat(document.getElementById('bm-waist').value) || null,
+            narrow_waist: parseFloat(document.getElementById('bm-narrow-waist').value) || null,
+            chest: parseFloat(document.getElementById('bm-chest').value) || null,
+            hips: parseFloat(document.getElementById('bm-hips').value) || null,
+            left_arm: parseFloat(document.getElementById('bm-left-arm').value) || null,
+            right_arm: parseFloat(document.getElementById('bm-right-arm').value) || null,
+            left_thigh: parseFloat(document.getElementById('bm-left-thigh').value) || null,
+            right_thigh: parseFloat(document.getElementById('bm-right-thigh').value) || null,
+            neck: parseFloat(document.getElementById('bm-neck').value) || null,
+            body_fat: parseFloat(document.getElementById('bm-body-fat').value) || null,
+            notes: document.getElementById('bm-notes').value || null,
+            conditions: conditions,
+        };
+
+        try {
+            const res = await fetch('/api/profile/measurements', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(localStorage.getItem('mygym_profile_id')
+                        ? { 'X-Profile-Id': localStorage.getItem('mygym_profile_id') }
+                        : {}),
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                showSnackbar(err.detail || 'صار خطأ', true);
+                return;
+            }
+
+            showSnackbar('تم حفظ القياس بنجاح ✅', false);
+            toggleBodyTracking();
+        } catch (err) {
+            showSnackbar('لا يوجد اتصال بالإنترنت', true);
+        }
+    }
+
+    async function submitProfile() {
+        const payload = {
+            sex: document.getElementById('p-sex').value,
+            birth_year: parseInt(document.getElementById('p-birth-year').value),
+            height_cm: parseFloat(document.getElementById('p-height').value),
+            current_weight_kg: parseFloat(document.getElementById('p-weight').value),
+            experience_level: document.getElementById('p-experience').value,
+            training_days_per_week: parseInt(document.getElementById('p-days').value),
+            session_duration_minutes: parseInt(document.getElementById('p-duration').value),
+            primary_goal: document.getElementById('p-goal').value,
+        };
+
+        if (Object.values(payload).some(v => v === '' || Number.isNaN(v))) {
+            showSnackbar('عبّي كل الحقول أول', true);
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/profile', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(localStorage.getItem('mygym_profile_id')
+                        ? { 'X-Profile-Id': localStorage.getItem('mygym_profile_id') }
+                        : {}),
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                showSnackbar(err.detail || 'صار خطأ، حاول مرة ثانية', true);
+                return;
+            }
+
+            const data = await res.json();
+            localStorage.setItem('onboarding_completed', 'true');
+
+            if (data.warnings && data.warnings.length > 0) {
+                showSnackbar(data.warnings[0].message, false);
+                setTimeout(() => { window.location.href = '/'; }, 2000);
+            } else {
+                window.location.href = '/';
+            }
+        } catch (err) {
+            showSnackbar('لا يوجد اتصال بالإنترنت', true);
+        }
+    }
+    </script>
+</body>
+</html>
