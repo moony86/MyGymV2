@@ -26,6 +26,7 @@ body {
     color: var(--ink);
     line-height: 1.6;
     min-height: 100vh;
+    overflow-x: hidden;
 }
 
 .container {
@@ -373,6 +374,105 @@ select {
 .comparison-empty span {
     color: #6b7280;
     font-size: 0.85rem;
+}
+
+.field-hint {
+    color: var(--muted);
+    font-size: 0.75rem;
+    font-weight: 400;
+}
+
+.progress-overview {
+    margin-bottom: 18px;
+}
+
+.overview-label {
+    color: var(--ink-soft);
+    font-size: 0.82rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.progress-card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.progress-card {
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: #fbfdff;
+}
+
+.progress-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.progress-card-top strong {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--ink);
+    font-size: 0.95rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.progress-card-value {
+    margin-top: 12px;
+    color: var(--ink);
+    font-size: 1.05rem;
+    font-weight: 800;
+}
+
+.progress-card small {
+    display: block;
+    margin-top: 5px;
+    color: var(--muted);
+    font-size: 0.73rem;
+}
+
+.direction {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    flex: 0 0 auto;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.direction svg {
+    width: 14px;
+    height: 14px;
+}
+
+.direction-up { color: #15803d; }
+.direction-down { color: #dc2626; }
+.direction-steady { color: var(--muted); }
+
+.overview-empty {
+    display: grid;
+    justify-items: center;
+    gap: 7px;
+    padding: 20px 12px;
+    border: 1px dashed var(--line);
+    border-radius: 14px;
+    text-align: center;
+}
+
+.overview-empty strong {
+    color: var(--ink);
+    font-size: 0.95rem;
+}
+
+.overview-empty span {
+    color: var(--ink-soft);
+    font-size: 0.8rem;
 }
 
 .snackbar {
@@ -724,10 +824,13 @@ background: #eff6ff;
 @media (max-width: 560px) {
     .container { padding: 16px 12px 32px; }
     .card { padding: 18px; border-radius: 16px; }
+    .container > header { flex-wrap: wrap; gap: 8px; }
+    .container > header > div { flex-basis: 100%; }
     .timeline-item { grid-template-columns: auto 1fr auto; }
     .timeline-item .history-volume,
     .timeline-item .history-sets { font-size: 0.78rem; }
     .comparison-grid { grid-template-columns: 1fr; gap: 8px; }
+    .progress-card-grid { grid-template-columns: 1fr; }
     .streak-badge { font-size: 0.68rem; }
 }
 

@@ -842,6 +842,7 @@ const Dashboard = {
         if (!selector) return;
         const names = [...new Set(this.rows.map(row => row.name))];
         selector.innerHTML = '<option value="">عرض تمرين آخر</option>' + names.map(name => `<option value="${name}">${name}</option>`).join('');
+        this.renderOverview();
         const latest = this.rows[this.rows.length - 1];
         if (latest) {
             selector.value = latest.name;
@@ -850,6 +851,70 @@ const Dashboard = {
             this.renderEmptyComparison();
         }
         selector.onchange = () => this.renderComparison(selector.value);
+    },
+
+    median(values) {
+        const sorted = values.filter(value => Number.isFinite(value)).sort((a, b) => a - b);
+        if (!sorted.length) return null;
+        const middle = Math.floor(sorted.length / 2);
+        return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+    },
+
+    getStatisticalSummary(history) {
+        if (history.length < 2) return null;
+        const current = history[history.length - 1];
+        const previous = history[history.length - 2];
+        if (history.length < 3) {
+            return {
+                name: current.name,
+                sessions: history.length,
+                baseline: previous.maxWeight,
+                current: current.maxWeight,
+                baselineVolume: previous.volume,
+                currentVolume: current.volume,
+                direction: current.maxWeight > previous.maxWeight ? 'up' : current.maxWeight < previous.maxWeight ? 'down' : 'steady',
+                confidence: 'limited',
+            };
+        }
+
+        const windowSize = Math.min(5, Math.max(3, Math.floor(history.length / 2)));
+        const baselineWindow = history.slice(0, windowSize);
+        const currentWindow = history.slice(-windowSize);
+        const baseline = this.median(baselineWindow.map(row => row.maxWeight));
+        const currentValue = this.median(currentWindow.map(row => row.maxWeight));
+        return {
+            name: current.name,
+            sessions: history.length,
+            baseline,
+            current: currentValue,
+            baselineVolume: this.median(baselineWindow.map(row => row.volume)),
+            currentVolume: this.median(currentWindow.map(row => row.volume)),
+            direction: currentValue > baseline ? 'up' : currentValue < baseline ? 'down' : 'steady',
+            confidence: 'statistical',
+        };
+    },
+
+    renderOverview() {
+        const target = document.getElementById('progress-overview');
+        if (!target) return;
+        const summaries = [...new Set(this.rows.map(row => row.name))]
+            .map(name => this.getStatisticalSummary(this.rows.filter(row => row.name === name)))
+            .filter(Boolean);
+        if (!summaries.length) {
+            target.innerHTML = '<div class="overview-empty"><i data-lucide="bar-chart-3" class="empty-icon"></i><strong>سجّل التمرين مرتين لنبدأ المقارنة</strong><span>سيظهر هنا ملخص تقدمك عبر كل التمارين، بدون الحاجة للمقارنة يدوياً.</span></div>';
+            if (window.lucide) lucide.createIcons();
+            return;
+        }
+        target.innerHTML = `<div class="overview-label">ملخص التقدم عبر التمارين</div><div class="progress-card-grid">${summaries.map(summary => {
+            const arrow = summary.direction === 'up' ? 'arrow-up-right' : summary.direction === 'down' ? 'arrow-down-right' : 'minus';
+            const directionText = summary.direction === 'up' ? 'تحسن' : summary.direction === 'down' ? 'تراجع' : 'ثابت';
+            const difference = summary.current - summary.baseline;
+            const valueText = summary.confidence === 'limited'
+                ? `من ${summary.baseline} إلى ${summary.current} كجم`
+                : `من ${summary.baseline.toFixed(1)} إلى ${summary.current.toFixed(1)} كجم`;
+            return `<article class="progress-card"><div class="progress-card-top"><strong>${summary.name}</strong><span class="direction direction-${summary.direction}"><i data-lucide="${arrow}"></i>${directionText}</span></div><div class="progress-card-value">${valueText}</div><small>${summary.confidence === 'limited' ? 'بيانات أولية من جلستين' : `مقارنة مستقرة من ${summary.sessions} جلسات`} · ${difference >= 0 ? '+' : ''}${summary.confidence === 'limited' ? difference : difference.toFixed(1)} كجم</small></article>`;
+        }).join('')}</div>`;
+        if (window.lucide) lucide.createIcons();
     },
 
     renderComparison(name) {
@@ -876,8 +941,13 @@ const Dashboard = {
 
     renderEmptyComparison() {
         const target = document.getElementById('progress-summary');
+        const overview = document.getElementById('progress-overview');
+        if (overview) {
+            overview.innerHTML = '<div class="overview-empty"><i data-lucide="bar-chart-3" class="empty-icon"></i><strong>سجّل التمرين مرتين لنبدأ المقارنة</strong><span>سيظهر هنا ملخص تقدمك عبر كل التمارين، بدون الحاجة للمقارنة يدوياً.</span></div>';
+            if (window.lucide) lucide.createIcons();
+        }
         if (target) {
-            target.innerHTML = '<div class="comparison-empty"><i data-lucide="target" class="empty-icon"></i><strong>سنبدأ التتبع من أول جلسة</strong><span>سجّل جلستين لنفس التمرين لنبدأ قياس تقدمك.</span></div>';
+            target.innerHTML = '<div class="comparison-empty"><i data-lucide="target" class="empty-icon"></i><strong>التفاصيل تظهر بعد تسجيل جلسات</strong><span>الملخص العام سيظهر تلقائياً عندما تتوفر بيانات كافية.</span></div>';
             if (window.lucide) lucide.createIcons();
         }
     },
