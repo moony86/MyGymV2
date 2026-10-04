@@ -55,3 +55,8 @@ Thumbs.db
 # Database file
 *.db
 *.bak_v2
+
+# Backup files (v2)
+*.bak_ratelimit
+*.bak_batch
+*.bak_analytics_btn
