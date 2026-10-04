@@ -54,3 +54,4 @@ Thumbs.db
 
 # Database file
 *.db
+*.bak_v2
