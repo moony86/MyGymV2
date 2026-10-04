@@ -60,3 +60,8 @@ Thumbs.db
 *.bak_ratelimit
 *.bak_batch
 *.bak_analytics_btn
+
+# Backup suffix
+*.bak_unlock
+*.bak_insights
+*.bak_final
