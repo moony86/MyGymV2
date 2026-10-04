@@ -63,7 +63,7 @@ def test_add_set_to_session(db_session, sample_exercise):
         weight=Decimal("75.0"),
         reps=6
     )
-    assert new_set2.set_order == 1
+    assert new_set2.set_order == 2
 
 def test_reject_negative_weight(db_session, sample_exercise):
     service = SessionService(db_session)

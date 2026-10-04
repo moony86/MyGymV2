@@ -1,30 +1,56 @@
-# Environment & Python
-ven/
-.venv/
+# ===== Python =====
 __pycache__/
 *.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
 
-# Logs & PIDs
-logs/
-*.log
-*.pid
-nohup.out
+# ===== Virtual Environment =====
+ven/
+venv/
+.env
+env/
 
-# Databases & Backups
-*.db
+# ===== Database (working files) =====
 *.db-shm
 *.db-wal
+*.sqlite-shm
+*.sqlite-wal
+
+# ===== Backups & Logs =====
 backups/
-
-# Keys & Certificates
-*.key
-*.crt
-
-# Backup files
+logs/
 *.bak
 *.bak2
 *.iso
 *.iso_bak
-*.iso_bak2
 *.before_*
 *.backup_*
+
+# ===== Secrets =====
+secrets/
+*.crt
+*.key
+*.pem
+
+# ===== Exports (بيانات مؤقتة) =====
+exports/
+
+# ===== OS / Editor =====
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.vscode/
+.idea/
+
+# ===== Personal notes =====
+"القاعدة المعرفية"
+"ماذا افعل"
+
+# Database file
+*.db
