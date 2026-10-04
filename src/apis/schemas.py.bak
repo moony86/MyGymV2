@@ -275,25 +275,3 @@ class ProgressiveOverloadSuggestion(BaseModel):
     suggested_weight: Decimal
     suggested_reps: int
     reason: str
-
-
-# ============================================================
-# Exercise Management Schemas (CRUD)
-# ============================================================
-class CreateExerciseRequest(BaseModel):
-    name: str
-    primary_muscle: Optional[str] = None
-    secondary_muscles: Optional[str] = None
-    equipment: Optional[str] = None
-    equipment_tag: Optional[str] = None  # alias للتوافق مع الواجهة
-    aliases: Optional[List[str]] = None
-
-
-class UpdateExerciseRequest(BaseModel):
-    name: Optional[str] = None
-    primary_muscle: Optional[str] = None
-    secondary_muscles: Optional[str] = None
-    equipment: Optional[str] = None
-    equipment_tag: Optional[str] = None
-    aliases: Optional[List[str]] = None
-    is_active: Optional[bool] = None

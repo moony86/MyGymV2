@@ -1,9 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 import os
 import uuid6
+import time
+from collections import defaultdict
 
 from src.apis.routers.sessions import router as sessions_router
 from src.apis.routers.exercises import router as exercises_router
@@ -18,7 +20,6 @@ from src.apis.deps import get_knowledge_provider
 from src.domain.profile_context import set_current_profile_id, reset_current_profile_id, DEFAULT_PROFILE_ID
 
 
-
 def run_migrations():
     """تشغيل الترحيلات تلقائياً عند بدء التشغيل"""
     alembic_cfg = Config("alembic.ini")
@@ -29,18 +30,88 @@ def run_migrations():
         raise RuntimeError(f"Database migrations failed: {e}") from e
 
 
-
 if os.getenv("PYTEST_CURRENT_TEST") is None:
     run_migrations()
 
 
+# ============================================================
+# Environment
+# ============================================================
+ENV = os.getenv("ENV", "development")
+IS_PROD = ENV == "production"
+
+# ✅ إخفاء docs في production
 app = FastAPI(
     title="MyGym Pro Core",
     description="Minimal workout tracking API for dogfooding",
-    version="0.1.0"
+    version="0.1.0",
+    docs_url=None if IS_PROD else "/docs",
+    redoc_url=None if IS_PROD else "/redoc",
+    openapi_url=None if IS_PROD else "/openapi.json",
 )
 
 
+# ============================================================
+# Rate Limiting (in-memory)
+# ============================================================
+RATE_LIMIT = 100        # طلبات
+RATE_WINDOW = 60        # في 60 ثانية
+request_log = defaultdict(list)
+
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    """
+    ✅ Rate limiting: 100 طلب/دقيقة لكل IP
+    """
+    ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    
+    # نحتفظ بطلبات آخر 60 ثانية فقط
+    request_log[ip] = [t for t in request_log[ip] if now - t < RATE_WINDOW]
+    
+    if len(request_log[ip]) >= RATE_LIMIT:
+        return JSONResponse(
+            status_code=429,
+            content={
+                "detail": "Too many requests. Try again later.",
+                "retry_after": RATE_WINDOW
+            },
+            headers={"Retry-After": str(RATE_WINDOW)}
+        )
+    
+    request_log[ip].append(now)
+    return await call_next(request)
+
+
+# ============================================================
+# Security Headers
+# ============================================================
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    """
+    ✅ Security headers لكل response
+    """
+    response = await call_next(request)
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://unpkg.com; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "img-src 'self' data:; "
+        "font-src 'self' https://fonts.gstatic.com;"
+        "connect-src 'self'"
+    )
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    return response
+
+
+# ============================================================
+# Profile Context (الموجود)
+# ============================================================
 @app.middleware("http")
 async def profile_context_middleware(request, call_next):
     token = set_current_profile_id(
@@ -51,6 +122,10 @@ async def profile_context_middleware(request, call_next):
     finally:
         reset_current_profile_id(token)
 
+
+# ============================================================
+# CORS
+# ============================================================
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -59,16 +134,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# ============================================================
+# Routers
+# ============================================================
 app.include_router(sessions_router)
 app.include_router(exercises_router)
 app.include_router(planner_router)
 app.include_router(profile_router)
 
+
+# ============================================================
+# Static files
+# ============================================================
 static_dir = os.path.join(os.path.dirname(__file__), "..", "..", "static")
 if os.path.exists(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 
+# ============================================================
+# Pages
+# ============================================================
 @app.get("/")
 async def root():
     return FileResponse(os.path.join(os.path.dirname(__file__), "..", "..", "templates", "index.html"))
@@ -83,6 +169,10 @@ async def workout_page():
 async def plans_page():
     return FileResponse(os.path.join(os.path.dirname(__file__), "..", "..", "templates", "plans.html"))
 
+@app.get("/manage")
+@app.get("/manage.html")
+async def manage_page():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "..", "..", "templates", "manage.html"))
 
 @app.get("/profile-setup")
 async def profile_setup_page():

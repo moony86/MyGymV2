@@ -8,22 +8,22 @@ from sqlalchemy import and_, select
 from src.domain.entities import Session, PerformedExercise, Set, SetType, SessionStatus, utc_now
 from src.infrastructure.db.models import SessionTable, PerformedExerciseTable, SetTable, ExerciseTable, DEFAULT_PROFILE_ID
 from src.services.units_service import WeightFormatter
-from src.domain.entities import utc_now
 from src.domain.profile_context import get_current_profile_id
+
 
 class SessionService:
     def __init__(self, db_session: DbSession, profile_id: Optional[str] = None):
         self.db = db_session
         self.profile_id = profile_id or get_current_profile_id()
 
-    # --- Ø§Ù„Ù…Ø³Ø§Ø¹Ø¯Ø§Øª Ø§Ù„Ø¯Ø§Ø®Ù„ÙŠØ© ---
+    # --- ÇáãÓÇÚÏÇÊ ÇáÏÇÎáíÉ ---
     def _to_domain_session(self, orm_session: SessionTable) -> Session:
         return Session.model_validate(orm_session, from_attributes=True)
 
     def _to_domain_set(self, orm_set: SetTable) -> Set:
         return Set.model_validate(orm_set, from_attributes=True)
 
-    # --- 1. Ø¨Ø¯Ø¡ Ø¬Ù„Ø³Ø© Ø¬Ø¯ÙŠØ¯Ø© ---
+    # --- 1. ÈÏÁ ÌáÓÉ ÌÏíÏÉ ---
     def create_session(
         self,
         notes: Optional[str] = None,
@@ -39,18 +39,17 @@ class SessionService:
         orm_session = SessionTable(
             id=str(uuid6.uuid7()),
             status=SessionStatus.ACTIVE.value,
-            started_at=utc_now(),  # <-- Ø£Ø¶Ù Ù‡Ø°Ø§
+            started_at=utc_now(),
             notes=notes,
             plan_id=plan_id,
             profile_id=self.profile_id,
-
         )
         self.db.add(orm_session)
         self.db.commit()
         self.db.refresh(orm_session)
         return self._to_domain_session(orm_session)
 
-    # --- 2. Ø§Ø³ØªØ±Ø¬Ø§Ø¹ Ø§Ù„Ø¬Ù„Ø³Ø© Ø§Ù„Ù†Ø´Ø·Ø© (Ù„Ù„Ø§Ø³ØªÙƒÙ…Ø§Ù„) ---
+    # --- 2. ÇÓÊÑÌÇÚ ÇáÌáÓÉ ÇáäÔØÉ ---
     def get_active_session(self) -> Optional[Session]:
         orm_session = self.db.query(SessionTable).filter(
             SessionTable.status == SessionStatus.ACTIVE.value,
@@ -60,7 +59,7 @@ class SessionService:
             return None
         return self._to_domain_session(orm_session)
 
-    # --- 3. Ø¥Ø¶Ø§ÙØ© Ù…Ø¬Ù…ÙˆØ¹Ø© (Set) ---
+    # --- 3. ÅÖÇİÉ ãÌãæÚÉ (Set) ---
     def add_set(
         self,
         session_id: uuid.UUID,
@@ -140,7 +139,7 @@ class SessionService:
 
         return self._to_domain_set(orm_set)
 
-    # --- 4. Ø¥Ù†Ù‡Ø§Ø¡ Ø§Ù„Ø¬Ù„Ø³Ø© ---
+    # --- 4. ÅäåÇÁ ÇáÌáÓÉ ---
     def finish_session(self, session_id: uuid.UUID) -> Session:
         orm_session = self.db.query(SessionTable).filter(
             SessionTable.id == str(session_id),
@@ -166,7 +165,7 @@ class SessionService:
         self.db.refresh(orm_session)
         return self._to_domain_session(orm_session)
 
-    # --- 5. Ø¥Ù„ØºØ§Ø¡ Ø§Ù„Ø¬Ù„Ø³Ø© (Abandon) ---
+    # --- 5. ÅáÛÇÁ ÇáÌáÓÉ (Abandon) ---
     def abandon_session(self, session_id: uuid.UUID) -> Session:
         orm_session = self.db.query(SessionTable).filter(
             SessionTable.id == str(session_id),
@@ -192,7 +191,7 @@ class SessionService:
         results = self.db.execute(stmt).scalars().all()
         return [self._to_domain_session(s) for s in results]
 
-     # --- 7. Ø§Ø³ØªØ¯Ø¹Ø§Ø¡ Ø§Ù„Ø¬Ù„Ø³Ø§Øª (Abandon) ---
+    # --- 7. ÇÓÊÚáÇãÇÊ æÇÓÊÑÌÇÚ ÇáÌáÓÇÊ ---
     def get_completed_sessions(self, limit: int = 30):
         stmt = (
             select(SessionTable)
@@ -203,13 +202,10 @@ class SessionService:
             .order_by(SessionTable.started_at.desc())
             .limit(limit)
         )
-
         return [
             self._to_domain_session(session)
             for session in self.db.execute(stmt).scalars().all()
-
         ]
-
 
     def get_session_sets(self, session_id: uuid.UUID):
         stmt = (
@@ -231,7 +227,7 @@ class SessionService:
         ).first()
         if not orm_session:
             return None, []
-        
+
         sets = self.get_session_sets(session_id)
         return self._to_domain_session(orm_session), sets
 
@@ -244,7 +240,7 @@ class SessionService:
         ).first()
         if not orm_performed:
             return None
-        
+
         stmt = (
             select(SetTable)
             .where(SetTable.performed_exercise_id == orm_performed.id)
@@ -254,12 +250,12 @@ class SessionService:
         result = self.db.execute(stmt).scalar_one_or_none()
         return self._to_domain_set(result) if result else None
 
-    def update_set(self, set_id: uuid.UUID, weight: Optional[Decimal] = None, reps: Optional[int] = None, 
+    def update_set(self, set_id: uuid.UUID, weight: Optional[Decimal] = None, reps: Optional[int] = None,
                    set_type: Optional[SetType] = None, rpe: Optional[float] = None, rir: Optional[int] = None):
         orm_set = self.db.query(SetTable).filter(SetTable.id == str(set_id)).first()
         if not orm_set:
             raise ValueError("Set not found.")
-        
+
         if weight is not None:
             orm_set.weight = WeightFormatter.to_decimal(weight)
         if reps is not None:
@@ -270,7 +266,7 @@ class SessionService:
             orm_set.rpe = rpe
         if rir is not None:
             orm_set.rir = rir
-        
+
         self.db.commit()
         self.db.refresh(orm_set)
         return self._to_domain_set(orm_set)
@@ -279,37 +275,28 @@ class SessionService:
         orm_set = self.db.query(SetTable).filter(SetTable.id == str(set_id)).first()
         if not orm_set:
             raise ValueError("Set not found.")
-        
+
         self.db.delete(orm_set)
         self.db.commit()
         return {"deleted": True}
 
     def delete_session(self, session_id: uuid.UUID):
-        orm_session = self.db.query(SessionTable).filter(SessionTable.id == str(session_id)).first()
+        orm_session = self.db.query(SessionTable).filter(
+            SessionTable.id == str(session_id),
+            SessionTable.profile_id == self.profile_id
+        ).first()
         if not orm_session:
             raise ValueError("Session not found.")
-    # Ø¥Ø°Ø§ ÙƒØ§Ù†Øª Ø§Ù„Ø¹Ù„Ø§Ù‚Ø§Øª Ø¨Ù‡Ø§ cascadeØŒ ÙÙ‚Ø· Ø§Ø­Ø°Ù Ø§Ù„Ø¬Ù„Ø³Ø©
+
+        # ÈİÖá ÇáÚáÇŞÇÊ ÇáÊáŞÇÆíÉ (Cascade Delete) İí ŞæÇÚÏ ÇáÈíÇäÇÊ¡ íßİí ÍĞİ ÇáÌáÓÉ İŞØ
         self.db.delete(orm_session)
-    # ÙˆÙ„ÙƒÙ† Ù‚Ø¯ ØªØ­ØªØ§Ø¬ Ø¥Ù„Ù‰ Ø­Ø°Ù PerformedExercise Ùˆ Sets ÙŠØ¯ÙˆÙŠØ§Ù‹ Ø¥Ø°Ø§ Ù„Ù… ØªÙƒÙ† cascade Ù…Ø¶Ø¨ÙˆØ·Ø©
-    # Ù„Ù„ØªØ£ÙƒØ¯ØŒ ÙŠÙ…ÙƒÙ†Ù†Ø§ Ø­Ø°ÙÙ‡Ø§ ÙŠØ¯ÙˆÙŠØ§Ù‹:
-        performed_exercises = self.db.query(PerformedExerciseTable).filter(
-            PerformedExerciseTable.session_id == str(session_id)
-        ).all()
-        for pe in performed_exercises:
-        # Ø­Ø°Ù Ø§Ù„Ù€ Sets Ø§Ù„Ù…Ø±ØªØ¨Ø·Ø©
-            self.db.query(SetTable).filter(SetTable.performed_exercise_id == pe.id).delete()
-    # Ø­Ø°Ù PerformedExercise
-        self.db.query(PerformedExerciseTable).filter(
-            PerformedExerciseTable.session_id == str(session_id)
-        ).delete()
-    # Ø«Ù… Ø­Ø°Ù Session
-        self.db.delete(orm_session)
+        self.db.commit()
+        return {"deleted": True}
 
-
-    def add_exercise_to_session(self, session_id, exercise_id) -> "PerformedExerciseTable":
-
+    def add_exercise_to_session(self, session_id, exercise_id) -> PerformedExerciseTable:
         session = self.db.query(SessionTable).filter(
-            SessionTable.id == str(session_id)
+            SessionTable.id == str(session_id),
+            SessionTable.profile_id == self.profile_id
         ).first()
         if not session:
             raise ValueError("Session not found")
@@ -321,7 +308,6 @@ class SessionService:
         if not exercise:
             raise ValueError("Exercise not found or inactive")
 
-    # Ù…Ù†Ø¹ Ø§Ù„ØªÙƒØ±Ø§Ø±: Ù„Ùˆ Ø§Ù„ØªÙ…Ø±ÙŠÙ† Ù…Ø¶Ø§Ù Ø£ØµÙ„Ù‹Ø§ Ù„Ù†ÙØ³ Ø§Ù„Ø¬Ù„Ø³Ø© (Ø¨Ø®Ø·Ø© Ø£Ùˆ Ø¨Ø¯ÙˆÙ†)ØŒ Ø±Ø¬Ù‘Ø¹Ù‡ ÙƒÙ…Ø§ Ù‡Ùˆ
         existing = self.db.query(PerformedExerciseTable).filter(
             PerformedExerciseTable.session_id == str(session_id),
             PerformedExerciseTable.exercise_id == str(exercise_id)

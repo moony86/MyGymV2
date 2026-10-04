@@ -451,7 +451,7 @@
             const rows = document.querySelectorAll('#dynamic-sets-body tr');
             const setsData = [];
 
-            rows.forEach((row, idx) => {
+            rows.forEach((row) => {
                 const weight = parseFloat(row.querySelector('.set-weight').value) || 0;
                 const reps = parseInt(row.querySelector('.set-reps').value) || 0;
                 const effort = row.querySelector('.set-effort-val').value || 'MID';
@@ -461,7 +461,7 @@
                 if (effort === 'HARD') rpeVal = 10;
 
                 if (reps > 0) {
-                    setsData.push({ exercise_id: currentExerciseId, set_order: idx + 1, weight, reps, rpe: rpeVal });
+                    setsData.push({ exercise_id: currentExerciseId, weight, reps, rpe: rpeVal });
                 }
             });
 
@@ -536,7 +536,7 @@
                     item.className = 'set-item';
                     item.style.cssText = 'padding: 8px 0; border-bottom: 1px solid #f3f4f6; display: flex; justify-content: space-between; font-size: 0.9rem;';
                     item.innerHTML = `
-                        <span><strong>${s.exercise_name || 'تمرين'}</strong> (جلسة ${s.set_order ?? '?'})</span>
+                        <span><strong>${s.exercise_name || 'تمرين'}</strong> (جلسة ${s.set_order || '?'})</span>
                         <span>${s.weight} كجم × ${s.reps}</span>
                     `;
                     container.appendChild(item);

@@ -24,6 +24,7 @@
                     <option>جاري التحميل...</option>
                 </select>
                 <button class="btn-secondary" onclick="addProfile()" style="width:auto;">+ شخص</button>
+				<button class="btn-secondary" onclick="window.location.href='/manage.html'"> ⚙️ إدارة التمارين والأجهزة</button>
             </div>
         </header>
 
@@ -126,7 +127,7 @@
     <div id="snackbar" class="snackbar"></div>
 
     <script src="/static/app.js?v=5"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="/static/vendor/lucide.min.js"></script>
     <script>
     if (window.lucide) lucide.createIcons();
     async function loadProfiles() {

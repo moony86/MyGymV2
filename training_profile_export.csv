@@ -1,0 +1,2 @@
+﻿id,sex,birth_year,height_cm,current_weight_kg,experience_level,training_days_per_week,session_duration_minutes,primary_goal,created_at,updated_at
+00000000-0000-0000-0000-000000000001,MALE,2000,172,75.4,INTERMEDIATE,3,60,FAT_LOSS,2026-08-19 16:04:36.299569,2026-09-27 20:07:48.985808

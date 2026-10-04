@@ -1,0 +1,3 @@
+﻿id,profile_id,date,type,goal,weight,waist,narrow_waist,chest,hips,left_arm,right_arm,left_thigh,right_thigh,neck,body_fat,notes,conditions,front_photo,side_photo,back_photo,created_at
+01a0e47a-6dd5-7338-88e9-d67df499f101,00000000-0000-0000-0000-000000000001,2026-09-27 00:00:00.000000,monthly,fat_loss,75.4,90,,104,,32.5,32.5,,,38,,,"{""morning"": false, ""after_bath"": false, ""fasting"": false, ""same_tape"": true}",,,,2026-09-27 20:07:03.893217
+01a0e47a-d90b-7dfd-99f1-9b5a229a4895,00000000-0000-0000-0000-000000000001,2026-09-27 00:00:00.000000,monthly,fat_loss,75.4,90,90,104,,32.5,32.5,,,38,,00 يعني بدون قياسات,"{""morning"": false, ""after_bath"": false, ""fasting"": false, ""same_tape"": true}",,,,2026-09-27 20:07:31.340037
