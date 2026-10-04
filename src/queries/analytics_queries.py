@@ -526,3 +526,112 @@ def get_available_exercises(db: Session, profile_id: str):
         }
         for r in db.execute(stmt).all()
     ]
+
+
+
+# ═══════════════════════════════════════════════════════════
+# 7) Actionable Insights (القرارات الذكية)
+# ═══════════════════════════════════════════════════════════
+
+def get_actionable_insights(db: Session, profile_id: str, weeks: int = 8):
+    """يرجّع قائمة قرارات واضحة مبنية على البيانات."""
+    insights = []
+
+    # 1) RIR منخفض جداً
+    effort = get_effort_analysis(db, profile_id, weeks=weeks)
+    if effort["avg_rir"] is not None and effort["avg_rir"] < 2:
+        insights.append({
+            "priority": "high",
+            "icon": "🚨",
+            "title": "خفّف الشدة فوراً",
+            "message": f"متوسط RIR عندك {effort['avg_rir']} — أنت تتدرب للفشل في كل مجموعة. هذا يفسّر التعب السريع.",
+            "action": "في الجلسات القادمة، توقف عندما يتبقى لك 2-3 تكرارات قبل الفشل (RIR 2-3).",
+        })
+
+    # 2) Pull/Push غير متوازن
+    mb = get_muscle_balance(db, profile_id, weeks=weeks)
+    ratio = mb["summary"].get("push_pull_ratio")
+    if ratio is not None and ratio < 0.8:
+        diff = mb["summary"]["push"]["sets"] - mb["summary"]["pull"]["sets"]
+        add_sets = max(6, diff // weeks + 4)
+        insights.append({
+            "priority": "high",
+            "icon": "⚠️",
+            "title": "زد تمارين السحب",
+            "message": f"Pull/Push = {ratio}. عندك {mb['summary']['push']['sets']} مجموعة دفع مقابل {mb['summary']['pull']['sets']} سحب. هذا يهدد كتفك.",
+            "action": f"أضف ~{add_sets} مجموعات سحب أسبوعياً. اقتراح: Face Pull (3)، Reverse Fly (3)، Seated Row (3).",
+        })
+
+    # 3) عضلات تحت MEV
+    low_muscles = [m for m in mb["muscles"] if m["status"] == "below_mev"][:3]
+    if low_muscles:
+        names = ", ".join([m["muscle"] for m in low_muscles])
+        insights.append({
+            "priority": "medium",
+            "icon": "📉",
+            "title": "عضلات تحت الحد الأدنى",
+            "message": f"هذي العضلات أقل من MEV: {names}. لازم 10+ مجموعة أسبوعياً للنمو.",
+            "action": "أضف تمرين لكل عضلة ناقصة (3 مجموعات × 2 جلسات = 6 أسبوعياً).",
+        })
+
+    # 4) الجمود
+    pl = get_plateaus(db, profile_id, weeks=3, min_sessions=2)
+    if pl["plateaus"]:
+        top = pl["plateaus"][:3]
+        names = ", ".join([p["name"] for p in top])
+        insights.append({
+            "priority": "medium",
+            "icon": "⏸️",
+            "title": "تمارين في جمود",
+            "message": f"{len(pl['plateaus'])} تمارين ما تحسّنت 3 أسابيع: {names}.",
+            "action": "لأي تمرين في جمود: زد الوزن 2.5 كجم، أو غيّر التمرين مؤقتاً.",
+        })
+
+    # 5) Trends متراجع
+    trends = get_weekly_trends(db, profile_id, weeks=weeks)
+    if len(trends) >= 4:
+        recent = trends[-4:]
+        first_avg = sum(t["volume"] for t in recent[:2]) / 2
+        last_avg = sum(t["volume"] for t in recent[-2:]) / 2
+        if first_avg > 0:
+            change = (last_avg - first_avg) / first_avg * 100
+            if change < -15:
+                insights.append({
+                    "priority": "high",
+                    "icon": "📉",
+                    "title": "الحجم يتراجع",
+                    "message": f"الحجم الأسبوعي نقص {abs(change):.0f}% في آخر 4 أسابيع.",
+                    "action": "راجع عدد الجلسات — هل تتغيب؟ رجّع لـ 3-4 جلسات أسبوعياً.",
+                })
+            elif change > 15:
+                insights.append({
+                    "priority": "low",
+                    "icon": "📈",
+                    "title": "الحجم يتحسن",
+                    "message": f"الحجم الأسبوعي زاد {change:.0f}% — ممتاز!",
+                    "action": "استمر بنفس الوتيرة، بس راقب الاستشفاء.",
+                })
+
+    # 6) نجاحات (positive feedback)
+    if not insights:
+        insights.append({
+            "priority": "low",
+            "icon": "✅",
+            "title": "كل شي تمام",
+            "message": "ما فيه أي مشاكل واضحة في بياناتك.",
+            "action": "استمر بنفس الوتيرة.",
+        })
+    elif effort["avg_rir"] and effort["avg_rir"] >= 2:
+        insights.append({
+            "priority": "low",
+            "icon": "✅",
+            "title": "RIR في النطاق المثالي",
+            "message": f"متوسط RIR = {effort['avg_rir']} — مثالي للتضخيم.",
+            "action": "استمر على نفس الشدة.",
+        })
+
+    # ترتيب حسب الأولوية
+    priority_order = {"high": 0, "medium": 1, "low": 2}
+    insights.sort(key=lambda x: priority_order.get(x["priority"], 3))
+
+    return insights

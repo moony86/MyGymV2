@@ -61,7 +61,10 @@
             <section class="card">
                 <div class="flex-row" style="justify-content: space-between;">
                     <h2>الخطط المتاحة</h2>
-                    <button class="btn-primary btn-small" onclick="showCreatePlanModal()">+ خطة جديدة</button>
+                    <div class="flex-row" style="gap: 8px;">
+                        <button class="btn-primary btn-small" style="background:#8b5cf6;" onclick="generatePlan()">🎲 ولّد برنامج</button>
+                        <button class="btn-primary btn-small" onclick="showCreatePlanModal()">+ خطة جديدة</button>
+                    </div>
                 </div>
                 <div id="plans-list" style="margin-top: 12px;">
                     <p class="text-muted">جاري التحميل...</p>
@@ -237,6 +240,20 @@
             const type = document.getElementById('schedule-type').value;
             document.getElementById('weekly-days-group').style.display = type === 'weekly' ? 'block' : 'none';
             document.getElementById('interval-days-group').style.display = type === 'interval' ? 'block' : 'none';
+        }
+
+        async function generatePlan() {
+            if (!confirm('توليد برنامج جديد؟\n\nسيتم إنشاء 3 خطط Full Body تلقائياً بناءً على بروفايلك.')) return;
+            
+            try {
+                const result = await apiRequest('/generate', { method: 'POST' });
+                const count = result.plans ? result.plans.length : 0;
+                showSnackbar(`✅ تم توليد ${count} خطة`);
+                await loadPlans();
+            } catch(e) {
+                console.error(e);
+                showSnackbar(e.message || 'تعذر التوليد', 'error');
+            }
         }
 
         async function loadPlans() {

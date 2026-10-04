@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session as DbSession
 
 from src.apis.deps import get_db, get_current_profile_id
 from src.queries.analytics_queries import (
+    get_actionable_insights,
     get_available_exercises,
     get_effort_analysis,
     get_exercise_prs,
@@ -95,6 +96,16 @@ def trends(
     return {"trends": get_weekly_trends(db, profile_id, weeks=weeks)}
 
 
+@router.get("/insights")
+def insights(
+    weeks: int = Query(8, ge=1, le=52),
+    db: DbSession = Depends(get_db),
+    profile_id: str = Depends(get_current_profile_id),
+):
+    """قرارات ذكية مبنية على البيانات — ماذا تفعل الآن؟"""
+    return {"insights": get_actionable_insights(db, profile_id, weeks=weeks)}
+
+
 @router.get("/overview")
 def overview(
     weeks: int = Query(8, ge=1, le=52),
@@ -103,6 +114,7 @@ def overview(
 ):
     """نظرة شاملة: كل المؤشرات في طلب واحد."""
     return {
+        "insights": get_actionable_insights(db, profile_id, weeks=weeks),
         "muscle_balance": get_muscle_balance(db, profile_id, weeks=weeks),
         "effort": get_effort_analysis(db, profile_id, weeks=weeks),
         "plateaus": get_plateaus(db, profile_id, weeks=3, min_sessions=2),

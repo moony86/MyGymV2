@@ -71,20 +71,6 @@
         .trend-down { background: #fee2e2; color: #991b1b; }
 
         .loading { text-align: center; padding: 30px; color: #9ca3af; }
-        /* ===== Actionable Insights ===== */
-        .insights-section { margin-bottom: 16px; }
-        .insights-section h2 { margin: 0 0 12px 0; font-size: 1.1rem; color: #111827; }
-        .insight-card { display: flex; gap: 12px; padding: 14px; border-radius: 12px; margin-bottom: 10px; border-right: 4px solid; }
-        .insight-card.high { background: #fef2f2; border-color: #dc2626; }
-        .insight-card.medium { background: #fffbeb; border-color: #f59e0b; }
-        .insight-card.low { background: #f0fdf4; border-color: #10b981; }
-        .insight-icon { font-size: 1.8rem; flex-shrink: 0; line-height: 1; }
-        .insight-body { flex: 1; min-width: 0; }
-        .insight-title { font-weight: 800; font-size: 1rem; margin-bottom: 4px; color: #111827; }
-        .insight-message { font-size: 0.85rem; color: #4b5563; line-height: 1.5; margin-bottom: 8px; }
-        .insight-action { font-size: 0.85rem; padding: 8px 10px; background: rgba(255,255,255,0.7); border-radius: 6px; color: #111827; }
-        .insight-action strong { color: #059669; }
-
         .empty { text-align: center; padding: 20px; color: #9ca3af; font-size: 0.9rem; }
 
         .rir-bar { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 0.8rem; }
@@ -118,12 +104,6 @@
                     <option value="24">6 أشهر</option>
                 </select>
             </div>
-
-            <!-- Actionable Insights -->
-            <section class="insights-section" id="insights-section" style="display: none;">
-                <h2>🎯 ماذا تفعل الآن؟</h2>
-                <div id="insights-content"></div>
-            </section>
 
             <div class="stats-grid" id="stats-grid">
                 <div class="stat-card"><div class="loading">...</div></div>
@@ -217,31 +197,6 @@
         if (status === 'high') return 'warning';
         if (status === 'above_mrv') return 'danger';
         return 'neutral';
-    }
-
-    // ═══════════════════════════════════════════════════
-    // 0) Actionable Insights
-    // ═══════════════════════════════════════════════════
-    function renderInsights(insights) {
-        const section = document.getElementById('insights-section');
-        const c = document.getElementById('insights-content');
-
-        if (!insights || !insights.length) {
-            section.style.display = 'none';
-            return;
-        }
-
-        section.style.display = 'block';
-        c.innerHTML = insights.map(function(ins) {
-            return '<div class="insight-card ' + ins.priority + '">' +
-                '<div class="insight-icon">' + ins.icon + '</div>' +
-                '<div class="insight-body">' +
-                    '<div class="insight-title">' + ins.title + '</div>' +
-                    '<div class="insight-message">' + ins.message + '</div>' +
-                    '<div class="insight-action">💡 <strong>الحل:</strong> ' + ins.action + '</div>' +
-                '</div>' +
-            '</div>';
-        }).join('');
     }
 
     // ═══════════════════════════════════════════════════
@@ -563,7 +518,6 @@
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const data = await res.json();
 
-            renderInsights(data.insights);
             renderStats(data);
             renderMuscleBalance(data.muscle_balance);
             renderEffort(data.effort);

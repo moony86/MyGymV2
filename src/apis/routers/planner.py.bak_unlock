@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api/planner", tags=["planner"])
 
 EXPERIMENTAL_PLANNER_ENABLED = os.getenv(
     "MYGYM_ENABLE_EXPERIMENTAL_PLANNER",
-    "true",
+    "false",
 ).lower() in {"1", "true", "yes"}
 
 
