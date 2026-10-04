@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Header
 from typing import List, Any
 from decimal import Decimal
+from datetime import datetime, timedelta, timezone
 import uuid
 
 from src.apis.schemas import (
@@ -12,8 +13,10 @@ from src.services.session_service import SessionService
 from src.services.units_service import WeightFormatter
 from src.domain.entities import Set, Session
 from src.domain.enums import SessionStatus, SetType
+from src.domain.profile_context import get_current_profile_id
 from src.infrastructure.db.models import ExerciseTable, SetTable, PerformedExerciseTable, PlanExerciseTable, SessionTable, ClientOperationTable, DEFAULT_PROFILE_ID
 from src.infrastructure.db.connection import SessionLocal
+from src.queries.metrics_queries import get_muscle_sets_by_week
 
 router = APIRouter(prefix="/api", tags=["workouts"])
 
@@ -234,6 +237,30 @@ def get_progress_comparison(exercise_id: str = None):
         return result
     finally:
         db.close()
+
+@router.get("/workouts/volume/weekly/current")
+def get_current_weekly_muscle_volume():
+    db = SessionLocal()
+    try:
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        week_start = (now - timedelta(days=now.weekday())).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        week_end = week_start + timedelta(days=7)
+        profile_id = get_current_profile_id()
+        rows = get_muscle_sets_by_week(db, profile_id, week_start, week_end)
+
+        return {
+            "week_start": week_start.date().isoformat(),
+            "week_end": week_end.date().isoformat(),
+            "volumes": [
+                {"muscle": muscle, "sets": int(sets)}
+                for muscle, sets in rows
+            ],
+        }
+    finally:
+        db.close()
+
 
 @router.get("/workouts/{session_id}", response_model=ActiveSessionDTO)
 def get_workout(session_id: str):

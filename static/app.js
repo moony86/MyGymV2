@@ -763,6 +763,19 @@ async function loadHistory() {
     }
 }
 
+async function loadWeeklyVolume() {
+    const target = document.getElementById('weekly-volume-bars');
+    if (!target) return;
+
+    try {
+        const data = await API.get('/workouts/volume/weekly/current');
+        Dashboard.renderWeeklyVolume(data);
+    } catch (err) {
+        console.error(err);
+        target.innerHTML = '<div class="weekly-volume-empty"><strong>تعذر تحميل حجم هذا الأسبوع</strong><span>تحقق من اتصالك وحاول مرة أخرى.</span></div>';
+    }
+}
+
 const Dashboard = {
     rows: [],
 
@@ -799,6 +812,34 @@ const Dashboard = {
             });
         });
         return rows.sort((a, b) => new Date(a.date) - new Date(b.date));
+    },
+
+    renderWeeklyVolume(data) {
+        const target = document.getElementById('weekly-volume-bars');
+        if (!target) return;
+
+        const volumes = Array.isArray(data?.volumes) ? data.volumes : [];
+        if (!volumes.length) {
+            target.innerHTML = '<div class="weekly-volume-empty"><strong>لا توجد مجموعات مسجلة في هذا الأسبوع</strong><span>ابدأ بتسجيل أول جلسة لمتابعة حجمك الأسبوعي.</span></div>';
+            return;
+        }
+
+        const maxSets = Math.max(...volumes.map(item => Number(item.sets) || 0), 1);
+        const weekLabel = `${data.week_start} — ${data.week_end}`;
+        target.innerHTML = `
+            <div class="weekly-volume-meta"><span>الأسبوع الحالي</span><strong>${weekLabel}</strong></div>
+            <div class="weekly-volume-list">${volumes.map(item => {
+                const sets = Math.max(Number(item.sets) || 0, 0);
+                const width = Math.max(Math.round((sets / maxSets) * 100), 4);
+                const muscle = item.muscle || 'غير محدد';
+                return `
+                    <div class="weekly-volume-row">
+                        <div class="weekly-volume-row-head"><strong>${muscle}</strong><span>${sets} مجموعات</span></div>
+                        <div class="weekly-volume-track"><div class="weekly-volume-fill" style="width: ${width}%"></div></div>
+                    </div>
+                `;
+            }).join('')}</div>
+        `;
     },
 
     renderTimeline(detailedSessions) {
@@ -1013,6 +1054,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await SessionManager.restore();
         UI.renderHome();
         await loadHistory();
+        await loadWeeklyVolume();
     }
 });
 

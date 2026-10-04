@@ -21,15 +21,16 @@ def get_session_volume(db, session_id):
     )
     return db.execute(stmt).scalar_one_or_none()
 
-def get_weekly_volume(db, user_id, week_start):
+def get_weekly_volume(db, profile_id, week_start, week_end):
     stmt = (
         select(func.sum(SetTable.weight * SetTable.reps))
         .join(PerformedExerciseTable, SetTable.performed_exercise_id == PerformedExerciseTable.id)
         .join(SessionTable, PerformedExerciseTable.session_id == SessionTable.id)
         .where(
             and_(
+                SessionTable.profile_id == profile_id,
                 SessionTable.started_at >= week_start,
-                SessionTable.user_id == user_id
+                SessionTable.started_at < week_end,
             )
         )
     )

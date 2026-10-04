@@ -261,6 +261,83 @@ select {
     font-size: 0.875rem;
 }
 
+.weekly-volume-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 14px;
+    color: var(--ink-soft);
+    font-size: 0.82rem;
+}
+
+.weekly-volume-meta strong {
+    color: var(--ink);
+    font-size: 0.78rem;
+}
+
+.weekly-volume-list {
+    display: grid;
+    gap: 12px;
+}
+
+.weekly-volume-row {
+    display: grid;
+    gap: 6px;
+}
+
+.weekly-volume-row-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.weekly-volume-row-head strong {
+    color: var(--ink);
+    font-size: 0.9rem;
+    text-transform: capitalize;
+}
+
+.weekly-volume-row-head span {
+    color: var(--ink-soft);
+    font-size: 0.78rem;
+    white-space: nowrap;
+}
+
+.weekly-volume-track {
+    height: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e2e8f0;
+}
+
+.weekly-volume-fill {
+    height: 100%;
+    min-width: 4px;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--brand), var(--accent));
+    transition: width 0.25s ease;
+}
+
+.weekly-volume-empty {
+    display: grid;
+    justify-items: center;
+    gap: 5px;
+    padding: 18px 10px;
+    color: var(--ink-soft);
+    text-align: center;
+}
+
+.weekly-volume-empty strong {
+    color: var(--ink);
+    font-size: 0.9rem;
+}
+
+.weekly-volume-empty span {
+    font-size: 0.78rem;
+}
+
 .volume-bar {
     display: flex;
     justify-content: space-between;

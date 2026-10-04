@@ -3,6 +3,7 @@ import uuid
 import uuid6
 import tempfile
 import os
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -196,3 +197,92 @@ def test_get_last_set(db_session, sample_exercise):
     assert response.status_code == 200
     data = response.json()
     assert Decimal(data["weight"]) == Decimal("70.00")
+
+
+def create_weekly_set(db_session, profile_id, exercise, started_at, set_type="working", is_skipped=False, is_warmup=False):
+    from src.infrastructure.db.models import PerformedExerciseTable, SessionTable, SetTable
+
+    session_id = str(uuid6.uuid7())
+    performed_exercise_id = str(uuid6.uuid7())
+    session = SessionTable(
+        id=session_id,
+        profile_id=profile_id,
+        status="COMPLETED",
+        started_at=started_at,
+    )
+    performed_exercise = PerformedExerciseTable(
+        id=performed_exercise_id,
+        session_id=session_id,
+        exercise_id=str(exercise.id),
+        is_skipped=is_skipped,
+        is_warmup=is_warmup,
+    )
+    set_row = SetTable(
+        id=str(uuid6.uuid7()),
+        performed_exercise_id=performed_exercise_id,
+        weight=Decimal("10.00"),
+        reps=2,
+        set_type=set_type,
+    )
+    db_session.add(session)
+    db_session.add(performed_exercise)
+    db_session.add(set_row)
+    db_session.commit()
+
+
+def test_current_weekly_muscle_volume_endpoint_filters_and_scopes(db_session, sample_exercise):
+    from src.infrastructure.db.models import ExerciseTable
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    week_start = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+    week_end = week_start + timedelta(days=7)
+    back_exercise = ExerciseTable(
+        id=str(uuid6.uuid7()),
+        name="Back Exercise",
+        primary_muscle="back",
+        is_active=True,
+    )
+    db_session.add(back_exercise)
+    db_session.commit()
+
+    profile_a = "profile-a"
+    profile_b = "profile-b"
+    create_weekly_set(db_session, profile_a, sample_exercise, week_start)
+    create_weekly_set(db_session, profile_a, sample_exercise, week_end - timedelta(microseconds=1))
+    create_weekly_set(db_session, profile_a, sample_exercise, week_end)
+    create_weekly_set(db_session, profile_a, sample_exercise, week_start - timedelta(days=1))
+    create_weekly_set(db_session, profile_a, sample_exercise, week_start, set_type="warmup")
+    create_weekly_set(db_session, profile_a, back_exercise, week_start, is_skipped=True)
+    create_weekly_set(db_session, profile_b, back_exercise, week_start)
+
+    response = client.get(
+        "/api/workouts/volume/weekly/current",
+        headers={"X-Profile-Id": profile_a},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "week_start": week_start.date().isoformat(),
+        "week_end": week_end.date().isoformat(),
+        "volumes": [
+            {"muscle": "chest", "sets": 2},
+        ],
+    }
+
+
+def test_weekly_query_helpers_use_profile_and_exclusive_end(db_session, sample_exercise):
+    from src.infrastructure.db.models import ExerciseTable
+    from src.queries.history_queries import get_weekly_volume
+    from src.queries.metrics_queries import get_muscle_volume_by_week
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    week_start = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+    week_end = week_start + timedelta(days=7)
+    profile_a = "profile-a"
+    profile_b = "profile-b"
+    create_weekly_set(db_session, profile_a, sample_exercise, week_start)
+    create_weekly_set(db_session, profile_a, sample_exercise, week_end)
+    create_weekly_set(db_session, profile_b, sample_exercise, week_start)
+
+    assert get_weekly_volume(db_session, profile_a, week_start, week_end) == Decimal("20.00")
+    assert get_muscle_volume_by_week(db_session, profile_a, week_start, week_end) == [("chest", Decimal("20.00"))]
