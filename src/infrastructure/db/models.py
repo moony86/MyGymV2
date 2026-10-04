@@ -37,6 +37,8 @@ class ExerciseTable(Base):
     is_active = Column(Boolean, default=True)
     aliases = Column(JSON, nullable=True)
     knowledge_variant_id = Column(String(150), nullable=True, index=True)
+    image_url = Column(String(500), nullable=True)
+    brand = Column(String(100), nullable=True)
 
     __table_args__ = (
         Index('ix_exercises_name', 'name'),
@@ -55,7 +57,7 @@ class SessionTable(Base):
     ended_at = Column(DateTime, nullable=True)
     notes = Column(Text)
 
-    # ÇáÚáÇÞÇÊ
+    # Ø§Ù„Ø¹Ù„Ø§Ù‚Ø§Øª
     plan = relationship("WorkoutPlanTable", back_populates="sessions")
     performed_exercises = relationship("PerformedExerciseTable", back_populates="session", cascade="all, delete-orphan")
 
@@ -76,7 +78,7 @@ class PerformedExerciseTable(Base):
     is_skipped = Column(Boolean, default=False)
     is_warmup = Column(Boolean, default=False)
 
-    # ÇáÚáÇÞÇÊ
+    # Ø§Ù„Ø¹Ù„Ø§Ù‚Ø§Øª
     session = relationship("SessionTable", back_populates="performed_exercises")
     exercise = relationship("ExerciseTable")
     sets = relationship("SetTable", back_populates="performed_exercise", cascade="all, delete-orphan")
@@ -98,7 +100,7 @@ class SetTable(Base):
     rir = Column(Integer, nullable=True)
     set_type = Column(String(20), nullable=False, default=SetType.WORKING.value)
 
-    # ÇáÚáÇÞÇÊ
+    # Ø§Ù„Ø¹Ù„Ø§Ù‚Ø§Øª
     performed_exercise = relationship("PerformedExerciseTable", back_populates="sets")
 
     __table_args__ = (
@@ -134,7 +136,7 @@ class WorkoutPlanTable(Base):
     day_index = Column(Integer, nullable=True)
     profile_id = Column(TEXT, ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False, index=True, default=DEFAULT_PROFILE_ID)
 
-    # ÇáÚáÇÞÇÊ
+    # Ø§Ù„Ø¹Ù„Ø§Ù‚Ø§Øª
     plan_exercises = relationship("PlanExerciseTable", back_populates="plan", cascade="all, delete-orphan")
     schedules = relationship("PlanScheduleTable", back_populates="plan", cascade="all, delete-orphan")
     sessions = relationship("SessionTable", back_populates="plan")
@@ -159,7 +161,7 @@ class PlanExerciseTable(Base):
     fixed_reps = Column(Integer, nullable=True)
     rest_seconds = Column(Integer, nullable=True)
 
-    # ÇáÚáÇÞÇÊ
+    # Ø§Ù„Ø¹Ù„Ø§Ù‚Ø§Øª
     plan = relationship("WorkoutPlanTable", back_populates="plan_exercises")
     exercise = relationship("ExerciseTable", foreign_keys=[exercise_id])
 
@@ -179,7 +181,7 @@ class PlanScheduleTable(Base):
     interval_days = Column(Integer, nullable=True)
     days_mask = Column(Integer, nullable=True)
 
-    # ÇáÚáÇÞÇÊ
+    # Ø§Ù„Ø¹Ù„Ø§Ù‚Ø§Øª
     plan = relationship("WorkoutPlanTable", back_populates="schedules")
 
     __table_args__ = (
@@ -194,7 +196,7 @@ class ExerciseAlternativeTable(Base):
     exercise_id = Column(TEXT, ForeignKey("exercises.id", ondelete="CASCADE"), nullable=False)
     alternative_exercise_id = Column(TEXT, ForeignKey("exercises.id", ondelete="CASCADE"), nullable=False)
 
-    # ÇáÚáÇÞÇÊ
+    # Ø§Ù„Ø¹Ù„Ø§Ù‚Ø§Øª
     exercise = relationship("ExerciseTable", foreign_keys=[exercise_id])
     alternative = relationship("ExerciseTable", foreign_keys=[alternative_exercise_id])
 

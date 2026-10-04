@@ -4,38 +4,99 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>إدارة التمارين والأجهزة - MyGym</title>
-    <link rel="stylesheet" href="/static/style.css?v=2">
+    <link rel="stylesheet" href="/static/style.css?v=3">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <style>
+        .ex-item { display: flex; align-items: center; gap: 12px; padding: 12px; border-bottom: 1px solid #f3f4f6; }
+        .ex-thumb { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; background: #f3f4f6; flex-shrink: 0; }
+        .ex-thumb-placeholder { width: 56px; height: 56px; border-radius: 10px; background: #f3f4f6; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; }
+        .ex-info { flex: 1; min-width: 0; }
+        .ex-name { font-weight: 700; color: #111827; margin-bottom: 4px; }
+        .ex-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+        .badge { font-size: 0.7rem; padding: 2px 8px; border-radius: 999px; font-weight: 600; }
+        .badge-muscle { background: #fef3c7; color: #92400e; }
+        .badge-equip { background: #e0f2fe; color: #0369a1; }
+        .badge-brand { background: #ede9fe; color: #6d28d9; }
+        .ex-actions { display: flex; gap: 6px; flex-shrink: 0; }
+        .btn-sm { padding: 6px 10px; font-size: 0.8rem; border-radius: 6px; border: none; cursor: pointer; font-family: inherit; }
+        .btn-edit { background: #f3f4f6; color: #374151; }
+        .btn-del { background: #fee2e2; color: #dc2626; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+        .modal-box { background: white; border-radius: 12px; max-width: 420px; width: 100%; padding: 24px; }
+        .modal-box h3 { margin: 0 0 12px 0; text-align: center; }
+        .modal-box input { width: 100%; padding: 10px; border: 1.5px solid #e5e7eb; border-radius: 8px; font-family: inherit; text-align: center; margin-bottom: 12px; box-sizing: border-box; font-size: 1rem; }
+        .modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .modal-actions button { padding: 12px; border-radius: 8px; border: none; font-family: inherit; font-weight: 600; cursor: pointer; font-size: 0.95rem; }
+        .btn-cancel { background: #f3f4f6; color: #374151; }
+        .btn-danger { background: #dc2626; color: white; }
+        .btn-danger:disabled { background: #fca5a5; cursor: not-allowed; }
+        .snackbar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px); background: #1e1b4b; color: white; padding: 12px 20px; border-radius: 8px; font-family: inherit; transition: transform 0.3s; z-index: 2000; }
+        .snackbar.show { transform: translateX(-50%) translateY(0); }
+        .snackbar.success { background: #059669; }
+        .snackbar.error { background: #dc2626; }
+        .form-field { margin-bottom: 12px; }
+        .form-field label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; color: #374151; }
+        .form-field input, .form-field select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-family: inherit; box-sizing: border-box; font-size: 0.95rem; }
+    </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <button class="btn-back" onclick="router ? router.navigate('home') : window.location.href='/'">← الصفحة الرئيسية</button>
-            <h1>⚙️ الإعدادات وإدارة التمارين</h1>
+            <button class="btn-back" onclick="window.location.href='/'">← الرئيسية</button>
+            <h1>⚙️ إدارة التمارين والأجهزة</h1>
         </header>
-
         <main>
-            <!-- قسم إضافة تمرين / جهاز جديد -->
             <section class="card">
                 <h2>➕ إضافة تمرين / جهاز جديد</h2>
                 <form id="add-exercise-form" onsubmit="handleCreateExercise(event)">
-                    <div style="margin-bottom: 12px;">
-                        <label>اسم التمرين</label>
-                        <input type="text" id="new-ex-name" class="input-control" placeholder="مثال: سحب ظهر سفلي" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-top: 4px;">
+                    <div class="form-field">
+                        <label>اسم التمرين *</label>
+                        <input type="text" id="new-ex-name" required placeholder="مثال: T-Bar Row">
                     </div>
-                    <div style="margin-bottom: 16px;">
-                        <label>علامة الجهاز / الماركة (اختياري)</label>
-                        <input type="text" id="new-ex-tag" class="input-control" placeholder="مثال: Hammer Strength, Cable, B-3" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-top: 4px;">
+                    <div class="form-field">
+                        <label>العضلة الأساسية</label>
+                        <select id="new-ex-muscle">
+                            <option value="">اختر...</option>
+                            <option value="chest">صدر</option>
+                            <option value="back">ظهر</option>
+                            <option value="shoulders">أكتاف</option>
+                            <option value="biceps">بايسبس</option>
+                            <option value="triceps">ترايسبس</option>
+                            <option value="legs">أرجل</option>
+                            <option value="hamstrings">خلفي</option>
+                            <option value="glutes">أليوية</option>
+                            <option value="calves">بطات</option>
+                            <option value="abs">بطن</option>
+                        </select>
                     </div>
-                    <button type="submit" class="btn-primary" style="width: 100%; background: #2563eb; padding: 12px; font-weight: bold;">حفظ التمرين الجديد</button>
+                    <div class="form-field">
+                        <label>المعدات</label>
+                        <select id="new-ex-equipment">
+                            <option value="">اختر...</option>
+                            <option value="barbell">Barbell</option>
+                            <option value="dumbbell">Dumbbell</option>
+                            <option value="machine">Machine</option>
+                            <option value="cable">Cable</option>
+                            <option value="bodyweight">Bodyweight</option>
+                            <option value="kettlebell">Kettlebell</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label>الماركة / الموديل (اختياري)</label>
+                        <input type="text" id="new-ex-brand" placeholder="مثال: Hammer Strength, Life Fitness">
+                    </div>
+                    <div class="form-field">
+                        <label>رابط الصورة (اختياري)</label>
+                        <input type="url" id="new-ex-image" placeholder="https://example.com/image.jpg">
+                    </div>
+                    <button type="submit" class="btn-primary" style="width: 100%; padding: 12px; font-weight: bold;">حفظ التمرين الجديد</button>
                 </form>
             </section>
 
-            <!-- قائمة التمارين الحالية وإدارتها -->
             <section class="card">
-                <h2>📋 قائمة التمارين المسجلة</h2>
+                <h2>📋 قائمة التمارين المسجلة (<span id="ex-count">...</span>)</h2>
                 <div id="exercises-list-wrapper" style="margin-top: 10px;">
                     <p class="text-muted">جاري تحميل التمارين...</p>
                 </div>
@@ -43,98 +104,240 @@
         </main>
     </div>
 
-    <script src="/static/app.js?v=4"></script>
+    <div id="delete-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-box">
+            <div style="text-align: center; font-size: 2.5rem; margin-bottom: 8px;" id="modal-icon">⚠️</div>
+            <h3 id="modal-title">تأكيد الحذف</h3>
+            <p id="modal-message" style="text-align: center; color: #4b5563;"></p>
+            <div id="modal-step2" style="display: none;">
+                <input type="text" id="modal-input" placeholder="اكتب اسم التمرين" autocomplete="off">
+                <p style="text-align: center; font-size: 0.75rem; color: #9ca3af;">يجب كتابة الاسم بالضبط</p>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeDeleteModal()">إلغاء</button>
+                <button class="btn-danger" id="modal-confirm" onclick="handleModalConfirm()">متابعة</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="snackbar" class="snackbar"></div>
+    <script src="/static/app.js?v=5"></script>
+    <script src="/static/vendor/lucide.min.js"></script>
+    <script>if (window.lucide) lucide.createIcons();</script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            loadAllExercises();
-        });
+    let exercisesMap = {};
+    let deleteStep = 1;
+    let deleteId = null;
+    let deleteName = null;
 
-        async function loadAllExercises() {
-            const container = document.getElementById('exercises-list-wrapper');
-            try {
-                const res = await fetch('/api/exercises');
-                if (!res.ok) throw new Error();
-                const exercises = await res.json();
+    function showSnackbar(msg, type) {
+        type = type || 'success';
+        const s = document.getElementById('snackbar');
+        s.textContent = msg;
+        s.className = 'snackbar show ' + type;
+        setTimeout(function() { s.className = 'snackbar'; }, 2500);
+    }
 
-                if (!exercises || exercises.length === 0) {
-                    container.innerHTML = '<p class="text-muted">لا توجد تمارين مسجلة حتى الآن.</p>';
-                    return;
-                }
+    function buildHeaders(json) {
+        const h = json ? { 'Content-Type': 'application/json' } : {};
+        const p = localStorage.getItem('mygym_profile_id');
+        if (p) h['X-Profile-Id'] = p;
+        return h;
+    }
 
-                container.innerHTML = '';
-                exercises.forEach(ex => {
-                    const item = document.createElement('div');
-                    item.style.cssText = 'padding: 12px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;';
-                    item.innerHTML = `
-                        <div>
-                            <strong>${ex.name}</strong>
-                            ${ex.equipment_tag ? `<span style="font-size: 0.8rem; background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; margin-right: 6px;">${ex.equipment_tag}</span>` : ''}
-                        </div>
-                        <button class="btn-secondary" style="font-size: 0.8rem; padding: 4px 8px;" onclick="editExercise('${ex.id}', '${ex.name}', '${ex.equipment_tag || ''}')">✏️ تعديل</button>
-                    `;
-                    container.appendChild(item);
-                });
-            } catch(e) {
-                container.innerHTML = '<p class="text-muted" style="color: red;">تعذر تحميل التمارين.</p>';
+    function escapeHtml(s) {
+        if (!s) return '';
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    async function loadAllExercises() {
+        const c = document.getElementById('exercises-list-wrapper');
+        const cnt = document.getElementById('ex-count');
+        try {
+            const res = await fetch('/api/exercises', { headers: buildHeaders() });
+            if (!res.ok) throw new Error();
+            const list = await res.json();
+            cnt.textContent = list.length;
+            exercisesMap = {};
+            list.forEach(function(e) { exercisesMap[e.id] = e; });
+            if (!list.length) {
+                c.innerHTML = '<p class="text-muted">لا توجد تمارين.</p>';
+                return;
             }
+            c.innerHTML = list.map(function(ex) {
+                var thumb;
+                if (ex.image_url) {
+                    thumb = '<img src="' + escapeHtml(ex.image_url) + '" class="ex-thumb" onerror="this.style.display=\'none\'">';
+                } else {
+                    thumb = '<div class="ex-thumb-placeholder">💪</div>';
+                }
+                var badges = '';
+                if (ex.primary_muscle) badges += '<span class="badge badge-muscle">' + escapeHtml(ex.primary_muscle) + '</span>';
+                if (ex.equipment) badges += '<span class="badge badge-equip">' + escapeHtml(ex.equipment) + '</span>';
+                if (ex.brand) badges += '<span class="badge badge-brand">' + escapeHtml(ex.brand) + '</span>';
+                return '<div class="ex-item">' + thumb +
+                    '<div class="ex-info">' +
+                        '<div class="ex-name">' + escapeHtml(ex.name) + '</div>' +
+                        '<div class="ex-badges">' + badges + '</div>' +
+                    '</div>' +
+                    '<div class="ex-actions">' +
+                        '<button class="btn-sm btn-edit" onclick="editExercise(\'' + ex.id + '\')">✏️</button>' +
+                        '<button class="btn-sm btn-del" onclick="openDeleteModal(\'' + ex.id + '\')">🗑️</button>' +
+                    '</div>' +
+                '</div>';
+            }).join('');
+        } catch(e) {
+            console.error(e);
+            c.innerHTML = '<p class="text-muted" style="color: red;">تعذر تحميل التمارين.</p>';
         }
+    }
 
-        async function handleCreateExercise(e) {
-            e.preventDefault();
-            const nameInput = document.getElementById('new-ex-name');
-            const tagInput = document.getElementById('new-ex-tag');
+    async function handleCreateExercise(ev) {
+        ev.preventDefault();
+        var payload = {
+            name: document.getElementById('new-ex-name').value.trim(),
+            primary_muscle: document.getElementById('new-ex-muscle').value || null,
+            equipment: document.getElementById('new-ex-equipment').value || null,
+            brand: document.getElementById('new-ex-brand').value.trim() || null,
+            image_url: document.getElementById('new-ex-image').value.trim() || null
+        };
+        if (!payload.name) { showSnackbar('أدخل اسم التمرين', 'error'); return; }
+        try {
+            const res = await fetch('/api/exercises', {
+                method: 'POST',
+                headers: buildHeaders(true),
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                showSnackbar('✅ تم إضافة التمرين');
+                document.getElementById('add-exercise-form').reset();
+                await loadAllExercises();
+            } else {
+                const err = await res.json().catch(function() { return {}; });
+                showSnackbar(err.detail || 'تعذر الإضافة', 'error');
+            }
+        } catch(e) {
+            console.error(e);
+            showSnackbar('تعذر الاتصال', 'error');
+        }
+    }
 
-            const payload = {
-                name: nameInput.value.trim(),
-                equipment_tag: tagInput.value.trim() || null
+    async function editExercise(id) {
+        const ex = exercisesMap[id];
+        if (!ex) return;
+        const newName = prompt('اسم التمرين:', ex.name);
+        if (newName === null || !newName.trim()) return;
+        const newMuscle = prompt('العضلة (chest/back/legs/...):', ex.primary_muscle || '');
+        if (newMuscle === null) return;
+        const newEquip = prompt('المعدات (barbell/dumbbell/machine/cable/...):', ex.equipment || '');
+        if (newEquip === null) return;
+        const newBrand = prompt('الماركة:', ex.brand || '');
+        if (newBrand === null) return;
+        const newImg = prompt('رابط الصورة:', ex.image_url || '');
+        if (newImg === null) return;
+        try {
+            const res = await fetch('/api/exercises/' + id, {
+                method: 'PUT',
+                headers: buildHeaders(true),
+                body: JSON.stringify({
+                    name: newName.trim(),
+                    primary_muscle: newMuscle.trim() || null,
+                    equipment: newEquip.trim() || null,
+                    brand: newBrand.trim() || null,
+                    image_url: newImg.trim() || null
+                })
+            });
+            if (res.ok) {
+                showSnackbar('✅ تم التحديث');
+                await loadAllExercises();
+            } else {
+                const err = await res.json().catch(function() { return {}; });
+                showSnackbar(err.detail || 'تعذر التحديث', 'error');
+            }
+        } catch(e) { showSnackbar('خطأ اتصال', 'error'); }
+    }
+
+    function openDeleteModal(id) {
+        const ex = exercisesMap[id];
+        if (!ex) return;
+        deleteId = id;
+        deleteName = ex.name;
+        deleteStep = 1;
+        document.getElementById('modal-icon').textContent = '⚠️';
+        document.getElementById('modal-title').textContent = 'تأكيد الحذف';
+        document.getElementById('modal-message').innerHTML = 'هل أنت متأكد من حذف <strong>' + escapeHtml(ex.name) + '</strong>؟';
+        document.getElementById('modal-step2').style.display = 'none';
+        document.getElementById('modal-confirm').textContent = 'متابعة';
+        document.getElementById('modal-confirm').disabled = false;
+        document.getElementById('delete-modal').style.display = 'flex';
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('delete-modal').style.display = 'none';
+        deleteId = null;
+        deleteName = null;
+        deleteStep = 1;
+    }
+
+    function handleModalConfirm() {
+        if (deleteStep === 1) {
+            deleteStep = 2;
+            document.getElementById('modal-icon').textContent = '🚨';
+            document.getElementById('modal-title').textContent = 'تأكيد نهائي';
+            document.getElementById('modal-message').innerHTML = 'اكتب اسم التمرين للتأكيد: <strong>' + escapeHtml(deleteName) + '</strong>';
+            document.getElementById('modal-step2').style.display = 'block';
+            const inp = document.getElementById('modal-input');
+            inp.value = '';
+            inp.focus();
+            document.getElementById('modal-confirm').textContent = 'حذف نهائي';
+            document.getElementById('modal-confirm').disabled = true;
+            inp.oninput = function() {
+                document.getElementById('modal-confirm').disabled = inp.value !== deleteName;
             };
-
-            try {
-                const headers = { 'Content-Type': 'application/json' };
-                if (localStorage.getItem('mygym_profile_id')) headers['X-Profile-Id'] = localStorage.getItem('mygym_profile_id');
-
-                const res = await fetch('/api/exercises', {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify(payload)
-                });
-
-                if (res.ok) {
-                    alert('✅ تم إضافة التمرين بنجاح');
-                    nameInput.value = '';
-                    tagInput.value = '';
-                    await loadAllExercises();
-                } else {
-                    alert('حدث خطأ أثناء الإضافة');
+            inp.onkeydown = function(e) {
+                if (e.key === 'Enter' && !document.getElementById('modal-confirm').disabled) {
+                    document.getElementById('modal-confirm').click();
                 }
-            } catch(err) {
-                alert('تعذر الاتصال بالسيرفر');
+            };
+        } else {
+            performDelete();
+        }
+    }
+
+    async function performDelete() {
+        const btn = document.getElementById('modal-confirm');
+        btn.disabled = true;
+        btn.textContent = '⏳ جاري الحذف...';
+        try {
+            const res = await fetch('/api/exercises/' + deleteId, {
+                method: 'DELETE',
+                headers: buildHeaders()
+            });
+            if (res.ok) {
+                showSnackbar('✅ تم الحذف');
+                closeDeleteModal();
+                await loadAllExercises();
+            } else {
+                const err = await res.json().catch(function() { return {}; });
+                showSnackbar(err.detail || 'تعذر الحذف', 'error');
+                closeDeleteModal();
             }
+        } catch(e) {
+            console.error(e);
+            showSnackbar('خطأ اتصال', 'error');
+            closeDeleteModal();
         }
+    }
 
-        async function editExercise(id, oldName, oldTag) {
-            const newName = prompt("تعديل اسم التمرين:", oldName);
-            if (newName === null) return;
-            const newTag = prompt("تعديل علامة الجهاز / الماركة:", oldTag);
+    document.getElementById('delete-modal').addEventListener('click', function(e) {
+        if (e.target.id === 'delete-modal') closeDeleteModal();
+    });
 
-            try {
-                const headers = { 'Content-Type': 'application/json' };
-                if (localStorage.getItem('mygym_profile_id')) headers['X-Profile-Id'] = localStorage.getItem('mygym_profile_id');
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeDeleteModal();
+    });
 
-                const res = await fetch(`/api/exercises/${id}`, {
-                    method: 'PUT',
-                    headers,
-                    body: JSON.stringify({ name: newName.trim(), equipment_tag: newTag ? newTag.trim() : null })
-                });
-
-                if (res.ok) {
-                    alert('✅ تم تحديث التمرين');
-                    await loadAllExercises();
-                } else {
-                    alert('تعذر التحديث');
-                }
-            } catch(e) { alert('حدث خطأ في الاتصال'); }
-        }
+    document.addEventListener('DOMContentLoaded', loadAllExercises);
     </script>
 </body>
 </html>

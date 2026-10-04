@@ -30,25 +30,6 @@
         .day-checkbox:checked + .day-label { background: #6366f1; color: white; border-color: #6366f1; }
         
         .alt-badge { background: #fef3c7; color: #d97706; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; }
-        /* ===== تقييم الخطة ===== */
-        .eval-status-pass { background: #dcfce7; color: #166534; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; }
-        .eval-status-warning { background: #fef3c7; color: #92400e; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; }
-        .eval-status-fail { background: #fee2e2; color: #991b1b; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; }
-        .eval-section { margin-top: 18px; }
-        .eval-section h4 { margin: 0 0 8px 0; font-size: 0.9rem; color: #374151; font-weight: 700; }
-        .eval-section-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
-        .eval-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid #f3f4f6; gap: 10px; }
-        .eval-row:last-child { border-bottom: none; }
-        .eval-muscle-name { font-weight: 700; color: #111827; font-size: 0.95rem; }
-        .eval-sets { color: #374151; font-size: 0.9rem; font-weight: 600; }
-        .eval-range { color: #9ca3af; font-size: 0.72rem; margin-top: 2px; }
-        .eval-badge-ok { background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700; display: inline-block; margin-top: 4px; }
-        .eval-badge-low { background: #fee2e2; color: #991b1b; padding: 3px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700; display: inline-block; margin-top: 4px; }
-        .eval-badge-high { background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700; display: inline-block; margin-top: 4px; }
-        .eval-summary { display: flex; justify-content: space-between; align-items: center; padding: 14px; background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%); border-radius: 10px; margin-bottom: 12px; gap: 10px; flex-wrap: wrap; }
-        .eval-btn { background: #6366f1 !important; color: white !important; border: none !important; }
-        .eval-btn:hover { background: #4f46e5 !important; }
-
     </style>
 </head>
 <body>
@@ -159,21 +140,7 @@
         </div>
     </div>
 
-    <!-- مودال تقييم الخطة -->
-    <div id="eval-modal" class="modal-overlay" style="display: none;" onclick="if(event.target===this) closeModal('eval-modal')">
-        <div class="modal-content" style="max-width: 620px;">
-            <div class="modal-header">
-                <h2 id="eval-modal-title">📊 تقييم الخطة</h2>
-                <button class="modal-close" onclick="closeModal('eval-modal')">✕</button>
-            </div>
-            <div id="eval-modal-body">
-                <p class="text-muted">جاري التحميل...</p>
-            </div>
-        </div>
-    </div>
-
     <div id="snackbar" class="snackbar"></div>
-
 
     <script src="/static/vendor/lucide.min.js"></script>
     <script>if (window.lucide) lucide.createIcons();</script>
@@ -263,7 +230,6 @@
                         <div class="plan-exercises">${exNames || 'لا توجد تمارين'}</div>
                         <div class="flex-row" style="margin-top:10px;">
                             <button class="btn-primary btn-small" onclick="startPlan('${plan.id}')">▶ ابدأ</button>
-                            <button class="btn-secondary btn-small eval-btn" onclick="evaluatePlan('${plan.id}')">📊 تقييم</button>
                             <button class="btn-secondary btn-small" style="background:#f59e0b; color:white;" onclick="showEditPlanModal('${plan.id}')">✏️ تعديل</button>
                             <button class="btn-danger btn-small" onclick="deletePlan('${plan.id}')">🗑️ حذف</button>
                         </div>
@@ -467,128 +433,6 @@
             } catch(e) {
                 showSnackbar(e.message, 'error');
             }
-        }
-
-
-        // =====================================================
-        // تقييم الخطة (Evaluation)
-        // =====================================================
-        const MUSCLE_LABELS = {
-            'group.chest': 'الصدر',
-            'group.back': 'الظهر',
-            'group.shoulders': 'الأكتاف',
-            'group.legs': 'الأرجل',
-            'muscle.calves': 'البطات',
-            'muscle.abs': 'البطن',
-            'muscle.forearms': 'الساعدين',
-            'muscle.adductors': 'المُقربات',
-        };
-
-        function muscleLabel(id) {
-            return MUSCLE_LABELS[id] || id.replace('group.', '').replace('muscle.', '');
-        }
-
-        function evalBadge(status) {
-            if (status === 'ok') return '<span class="eval-badge-ok">✓ مثالي</span>';
-            if (status === 'below_minimum') return '<span class="eval-badge-low">↓ أقل من المطلوب</span>';
-            if (status === 'above_maximum') return '<span class="eval-badge-high">↑ أعلى من المطلوب</span>';
-            return '';
-        }
-
-        function evalRows(items) {
-            if (!items || !items.length) return '<div style="padding:14px; color:#9ca3af;">لا توجد بيانات</div>';
-            return items.map(m => `
-                <div class="eval-row">
-                    <div>
-                        <div class="eval-muscle-name">${muscleLabel(m.id)}</div>
-                        <div class="eval-range">الموصى به: ${m.recommended_range.low}–${m.recommended_range.high} مجموعة/أسبوع</div>
-                    </div>
-                    <div style="text-align: left;">
-                        <div class="eval-sets">${m.weekly_sets} مجموعة</div>
-                        ${evalBadge(m.status)}
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        async function evaluatePlan(planId) {
-            const modal = document.getElementById('eval-modal');
-            const body = document.getElementById('eval-modal-body');
-            const title = document.getElementById('eval-modal-title');
-
-            title.textContent = '📊 تقييم الخطة';
-            body.innerHTML = '<p class="text-muted" style="text-align:center; padding: 20px;">⏳ جاري التحليل...</p>';
-            modal.style.display = 'flex';
-
-            try {
-                const data = await apiRequest(`/evaluate-plan/${planId}`);
-                renderEvaluation(data);
-            } catch(e) {
-                body.innerHTML = `<div style="padding: 20px; text-align: center; color: #dc2626;">تعذر تحميل التقييم: ${e.message}</div>`;
-            }
-        }
-
-        function renderEvaluation(data) {
-            const body = document.getElementById('eval-modal-body');
-            const title = document.getElementById('eval-modal-title');
-
-            title.textContent = `📊 تقييم: ${data.plan_name || 'الخطة'}`;
-
-            const statusMap = {
-                'PASS':    { label: '✅ ممتاز',  cls: 'eval-status-pass',    msg: 'برنامجك متوازن ويغطي كل العضلات الرئيسية.' },
-                'WARNING': { label: '⚠️ تحذير', cls: 'eval-status-warning', msg: 'فيه عضلات خارج النطاق الموصى به — يستاهل المراجعة.' },
-                'FAIL':    { label: '🚨 يحتاج إصلاح', cls: 'eval-status-fail', msg: 'عضلات رئيسية مهملة! لازم تعديل البرنامج.' },
-            };
-            const status = statusMap[data.overall_status] || statusMap['WARNING'];
-
-            const goalLabels = {
-                'HYPERTROPHY': 'تضخيم',
-                'STRENGTH': 'قوة',
-                'FAT_LOSS': 'حرق دهون',
-                'GENERAL_FITNESS': 'لياقة عامة',
-            };
-
-            const unresolvedHtml = (data.unresolved_exercises && data.unresolved_exercises.length)
-                ? `<div class="eval-section">
-                    <h4>⚠️ تمارين غير مربوطة بقاعدة المعرفة:</h4>
-                    <div class="eval-section-box" style="padding: 10px 14px;">
-                        ${data.unresolved_exercises.map(n => `<div style="font-size: 0.85rem; color: #92400e; padding: 2px 0;">• ${n}</div>`).join('')}
-                    </div>
-                  </div>`
-                : '';
-
-            body.innerHTML = `
-                <div class="eval-summary">
-                    <div>
-                        <strong style="font-size: 1.05rem;">${data.plan_name || 'الخطة'}</strong>
-                        <div style="font-size: 0.8rem; color: #6b7280; margin-top: 4px;">
-                            الهدف: ${goalLabels[data.goal] || data.goal} • عدد الأيام: ${data.days_count}
-                        </div>
-                    </div>
-                    <span class="${status.cls}">${status.label}</span>
-                </div>
-
-                <p style="font-size: 0.88rem; color: #4b5563; margin: 0 0 6px 0;">${status.msg}</p>
-
-                <div class="eval-section">
-                    <h4>🎯 العضلات الرئيسية</h4>
-                    <div class="eval-section-box">${evalRows(data.major_muscles)}</div>
-                </div>
-
-                ${data.optional_muscles && data.optional_muscles.length ? `
-                <div class="eval-section">
-                    <h4>📌 العضلات الثانوية (اختيارية)</h4>
-                    <div class="eval-section-box">${evalRows(data.optional_muscles)}</div>
-                </div>` : ''}
-
-                ${unresolvedHtml}
-
-                <div style="margin-top: 20px; padding: 12px; background: #eff6ff; border-radius: 8px; font-size: 0.8rem; color: #1e40af;">
-                    💡 <strong>ملاحظة:</strong> التقييم يعتمد على حجم البرنامج المُخطّط (Sets/Week) مقارنة بالمعايير العلمية (MEV: الحد الأدنى، MRV: الحد الأقصى).
-                </div>
-
-                <button class="btn-secondary" style="width: 100%; margin-top: 16px;" onclick="closeModal('eval-modal')">إغلاق</button>
-            `;
         }
 
         document.addEventListener('DOMContentLoaded', () => {

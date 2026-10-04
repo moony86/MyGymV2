@@ -20,8 +20,6 @@ def _to_dto(ex) -> ExerciseDTO:
         name=ex.name,
         primary_muscle=ex.primary_muscle,
         equipment=ex.equipment,
-        brand=getattr(ex, 'brand', None),
-        image_url=getattr(ex, 'image_url', None),
         aliases=ex.aliases or [],
     )
 
@@ -66,8 +64,6 @@ def create_exercise(req: CreateExerciseRequest):
             primary_muscle=req.primary_muscle,
             secondary_muscles=req.secondary_muscles,
             equipment=equipment,
-            brand=req.brand,
-            image_url=req.image_url,
             aliases=req.aliases or [],
             is_active=True,
         )
@@ -116,10 +112,6 @@ def update_exercise(exercise_id: str, req: UpdateExerciseRequest):
         if equipment is not None:
             ex.equipment = equipment
 
-        if req.brand is not None:
-            ex.brand = req.brand
-        if req.image_url is not None:
-            ex.image_url = req.image_url
         if req.aliases is not None:
             ex.aliases = req.aliases
         if req.is_active is not None:

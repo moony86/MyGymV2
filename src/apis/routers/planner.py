@@ -746,3 +746,120 @@ def evaluate_program(
         program_group_id,
         profile,
     )
+
+
+@router.get("/evaluate-plan/{plan_id}")
+def evaluate_single_plan(
+    plan_id: str,
+    db=Depends(get_db),
+):
+    """تقييم خطة واحدة — يعمل على أي خطة موجودة بدون feature flag."""
+    profile = db.query(TrainingProfileTable).first()
+    if not profile:
+        raise HTTPException(status_code=400, detail="أكمل البروفايل أولاً")
+
+    from src.infrastructure.db.models import WorkoutPlanTable
+    target_plan = db.query(WorkoutPlanTable).filter(
+        WorkoutPlanTable.id == plan_id
+    ).first()
+
+    if not target_plan:
+        raise HTTPException(status_code=404, detail="الخطة غير موجودة")
+
+    # إذا عنده program_group_id، استخدم المجموعة كاملة
+    if target_plan.program_group_id:
+        return EvaluatorService(db).evaluate_program(
+            target_plan.program_group_id, profile
+        )
+
+    # خطة مفردة — نبني تقرير مباشرة
+    from collections import defaultdict
+    from src.infrastructure.db.models import ExerciseTable, PlanExerciseTable
+    from src.apis.deps import get_knowledge_provider
+    from src.services.evaluator_service import GOAL_TO_TRAINING_RULES
+
+    provider = get_knowledge_provider()
+    plan_exercises = db.query(PlanExerciseTable).filter(
+        PlanExerciseTable.plan_id == plan_id
+    ).all()
+
+    muscle_volume = defaultdict(float)
+    unresolved = []
+    SECONDARY_WEIGHT = 0.5
+
+    for pe in plan_exercises:
+        exercise_row = db.query(ExerciseTable).filter(
+            ExerciseTable.id == pe.exercise_id
+        ).first()
+        if not exercise_row or not exercise_row.knowledge_variant_id:
+            unresolved.append(exercise_row.name if exercise_row else pe.exercise_id)
+            continue
+        try:
+            variant = provider.variant(exercise_row.knowledge_variant_id)
+            exercise = provider.exercise(variant.exercise)
+        except Exception:
+            unresolved.append(exercise_row.name)
+            continue
+
+        sets = pe.target_sets or 0
+        for muscle_id in (exercise.primary_muscles or []):
+            muscle_volume[muscle_id] += sets * 1.0
+        for muscle_id in (exercise.secondary_muscles or []):
+            muscle_volume[muscle_id] += sets * SECONDARY_WEIGHT
+
+    group_volume = defaultdict(float)
+    for muscle_id, volume in muscle_volume.items():
+        muscle = provider.muscle(muscle_id)
+        if muscle and getattr(muscle, "group", None):
+            group_volume[muscle.group] += volume
+
+    goal_key = GOAL_TO_TRAINING_RULES.get(profile.primary_goal, "hypertrophy")
+    volume_rules = provider.training_rules["weekly_volume"][goal_key]
+    coverage_rules = provider.training_rules["muscle_coverage"]
+
+    def classify(vol, rules):
+        if vol < rules["minimum_sets_per_muscle"]:
+            return "below_minimum"
+        if vol > rules["maximum_sets_per_muscle"]:
+            return "above_maximum"
+        return "ok"
+
+    major_report = []
+    for group_id in coverage_rules["major_muscles"]:
+        vol = round(group_volume.get(group_id, 0.0), 1)
+        major_report.append({
+            "id": group_id,
+            "weekly_sets": vol,
+            "recommended_range": volume_rules["recommended_sets"],
+            "status": classify(vol, volume_rules),
+        })
+
+    optional_report = []
+    for muscle_id in coverage_rules["optional_muscles"]:
+        vol = round(muscle_volume.get(muscle_id, 0.0), 1)
+        optional_report.append({
+            "id": muscle_id,
+            "weekly_sets": vol,
+            "recommended_range": volume_rules["recommended_sets"],
+            "status": classify(vol, volume_rules),
+        })
+
+    overall = "PASS"
+    if any(r["status"] == "below_minimum" for r in major_report):
+        overall = "FAIL"
+    elif any(r["status"] in ("below_minimum", "above_maximum")
+             for r in major_report + optional_report):
+        overall = "WARNING"
+
+    return {
+        "program_group_id": None,
+        "plan_id": plan_id,
+        "plan_name": target_plan.name,
+        "days_count": 1,
+        "goal": profile.primary_goal,
+        "overall_status": overall,
+        "major_muscles": major_report,
+        "optional_muscles": optional_report,
+        "unresolved_exercises": unresolved,
+    }
+

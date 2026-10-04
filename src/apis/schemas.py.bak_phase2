@@ -129,8 +129,6 @@ class ExerciseDTO(BaseModel):
     name: str
     primary_muscle: Optional[str] = None
     equipment: Optional[str] = None
-    brand: Optional[str] = None
-    image_url: Optional[str] = None
     aliases: Optional[List[str]] = None
 
 class ActiveSessionDTO(BaseModel):
@@ -288,8 +286,6 @@ class CreateExerciseRequest(BaseModel):
     secondary_muscles: Optional[str] = None
     equipment: Optional[str] = None
     equipment_tag: Optional[str] = None  # alias للتوافق مع الواجهة
-    brand: Optional[str] = None
-    image_url: Optional[str] = None
     aliases: Optional[List[str]] = None
 
 
@@ -299,7 +295,5 @@ class UpdateExerciseRequest(BaseModel):
     secondary_muscles: Optional[str] = None
     equipment: Optional[str] = None
     equipment_tag: Optional[str] = None
-    brand: Optional[str] = None
-    image_url: Optional[str] = None
     aliases: Optional[List[str]] = None
     is_active: Optional[bool] = None
