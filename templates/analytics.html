@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>التحليلات - MyGym</title>
+    <link rel="stylesheet" href="/static/style.css?v=3">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <style>
+        .analytics-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 10px; flex-wrap: wrap; }
+        .analytics-header h1 { margin: 0; font-size: 1.3rem; }
+        .period-selector { background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px 12px; font-family: inherit; font-size: 0.85rem; cursor: pointer; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
+        .stat-card { background: white; border-radius: 12px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); text-align: center; }
+        .stat-value { font-size: 1.5rem; font-weight: 800; color: #111827; margin: 4px 0; }
+        .stat-label { font-size: 0.75rem; color: #6b7280; font-weight: 600; }
+        .stat-card.warn { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); }
+        .stat-card.danger { background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); }
+        .stat-card.success { background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); }
+
+        .section-card { background: white; border-radius: 14px; padding: 18px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        .section-card h2 { margin: 0 0 14px 0; font-size: 1.05rem; display: flex; align-items: center; gap: 8px; color: #111827; }
+        .section-card h2 .count { font-size: 0.75rem; font-weight: 600; color: #6b7280; background: #f3f4f6; padding: 2px 8px; border-radius: 999px; }
+
+        .bar-row { display: grid; grid-template-columns: 90px 1fr 70px; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f3f4f6; }
+        .bar-row:last-child { border-bottom: none; }
+        .bar-label { font-weight: 700; color: #374151; font-size: 0.85rem; text-transform: capitalize; }
+        .bar-track { height: 22px; background: #f3f4f6; border-radius: 999px; overflow: hidden; position: relative; }
+        .bar-fill { height: 100%; border-radius: inherit; transition: width 0.4s ease; display: flex; align-items: center; padding-left: 8px; font-size: 0.7rem; font-weight: 700; color: white; }
+        .bar-fill.ok { background: linear-gradient(90deg, #10b981, #059669); }
+        .bar-fill.warning { background: linear-gradient(90deg, #f59e0b, #d97706); }
+        .bar-fill.danger { background: linear-gradient(90deg, #ef4444, #dc2626); }
+        .bar-fill.neutral { background: linear-gradient(90deg, #6366f1, #4f46e5); }
+        .bar-value { font-size: 0.85rem; font-weight: 700; color: #111827; text-align: left; }
+
+        .segmented { display: flex; gap: 4px; height: 32px; border-radius: 8px; overflow: hidden; margin: 12px 0; }
+        .segmented > div { flex: 1; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.8rem; }
+        .seg-push { background: #ef4444; }
+        .seg-pull { background: #10b981; }
+        .seg-legs { background: #6366f1; }
+
+        .warning-box { padding: 12px; background: #fef3c7; border-right: 4px solid #f59e0b; border-radius: 8px; margin-top: 10px; font-size: 0.85rem; color: #78350f; }
+        .danger-box { padding: 12px; background: #fee2e2; border-right: 4px solid #dc2626; border-radius: 8px; margin-top: 10px; font-size: 0.85rem; color: #7f1d1d; }
+        .success-box { padding: 12px; background: #dcfce7; border-right: 4px solid #10b981; border-radius: 8px; margin-top: 10px; font-size: 0.85rem; color: #14532d; }
+
+        .plateau-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: #fef3c7; border-radius: 8px; margin-bottom: 6px; gap: 10px; }
+        .plateau-name { font-weight: 700; color: #78350f; }
+        .plateau-meta { font-size: 0.75rem; color: #92400e; }
+        .plateau-badge { background: #f59e0b; color: white; padding: 4px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; }
+
+        .trend-bars { display: flex; align-items: flex-end; gap: 4px; height: 100px; padding: 8px 0; }
+        .trend-bar { flex: 1; background: linear-gradient(180deg, #6366f1, #4f46e5); border-radius: 4px 4px 0 0; min-height: 4px; transition: all 0.3s; position: relative; cursor: pointer; }
+        .trend-bar:hover { opacity: 0.8; }
+        .trend-bar-labels { display: flex; gap: 4px; font-size: 0.65rem; color: #6b7280; margin-top: 4px; }
+        .trend-bar-labels > div { flex: 1; text-align: center; transform: rotate(-45deg); transform-origin: center; }
+
+        .select-exercise { width: 100%; padding: 12px; border: 1.5px solid #e5e7eb; border-radius: 10px; font-family: inherit; font-size: 0.95rem; background: white; cursor: pointer; margin-bottom: 14px; }
+        .select-exercise:focus { outline: none; border-color: #6366f1; }
+
+        .pr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .pr-card { background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%); border-radius: 10px; padding: 12px; text-align: center; }
+        .pr-value { font-size: 1.25rem; font-weight: 800; color: #111827; }
+        .pr-label { font-size: 0.7rem; color: #6b7280; margin-top: 4px; font-weight: 600; }
+
+        .trend-badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; }
+        .trend-up { background: #dcfce7; color: #166534; }
+        .trend-flat { background: #f3f4f6; color: #4b5563; }
+        .trend-down { background: #fee2e2; color: #991b1b; }
+
+        .loading { text-align: center; padding: 30px; color: #9ca3af; }
+        .empty { text-align: center; padding: 20px; color: #9ca3af; font-size: 0.9rem; }
+
+        .rir-bar { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 0.8rem; }
+        .rir-bar-label { width: 55px; font-weight: 700; color: #374151; }
+        .rir-bar-track { flex: 1; height: 16px; background: #f3f4f6; border-radius: 4px; overflow: hidden; }
+        .rir-bar-fill { height: 100%; border-radius: inherit; }
+        .rir-bar-count { width: 40px; text-align: left; font-weight: 600; color: #6b7280; }
+
+        @media (max-width: 500px) {
+            .bar-row { grid-template-columns: 70px 1fr 55px; gap: 6px; }
+            .bar-label { font-size: 0.78rem; }
+            .pr-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <button class="btn-back" onclick="window.location.href='/'">← الرئيسية</button>
+            <h1>📊 التحليلات</h1>
+        </header>
+
+        <main>
+            <!-- Overview Stats -->
+            <div class="analytics-header">
+                <span style="font-size: 0.8rem; color: #6b7280;">الفترة:</span>
+                <select class="period-selector" id="period-selector" onchange="changePeriod()">
+                    <option value="4">4 أسابيع</option>
+                    <option value="8" selected>8 أسابيع</option>
+                    <option value="12">12 أسبوع</option>
+                    <option value="24">6 أشهر</option>
+                </select>
+            </div>
+
+            <div class="stats-grid" id="stats-grid">
+                <div class="stat-card"><div class="loading">...</div></div>
+                <div class="stat-card"><div class="loading">...</div></div>
+                <div class="stat-card"><div class="loading">...</div></div>
+                <div class="stat-card"><div class="loading">...</div></div>
+            </div>
+
+            <!-- Muscle Balance -->
+            <section class="section-card">
+                <h2>🎯 توازن العضلات <span class="count" id="muscle-count">...</span></h2>
+                <div id="muscle-balance-content">
+                    <div class="loading">جاري التحميل...</div>
+                </div>
+            </section>
+
+            <!-- Effort Analysis -->
+            <section class="section-card">
+                <h2>🎚️ تحليل الشدة (RIR / RPE)</h2>
+                <div id="effort-content">
+                    <div class="loading">جاري التحميل...</div>
+                </div>
+            </section>
+
+            <!-- Plateaus -->
+            <section class="section-card">
+                <h2>⏸️ تمارين في جمود <span class="count" id="plateau-count">...</span></h2>
+                <div id="plateau-content">
+                    <div class="loading">جاري التحميل...</div>
+                </div>
+            </section>
+
+            <!-- Weekly Trends -->
+            <section class="section-card">
+                <h2>📈 التطور الأسبوعي</h2>
+                <div id="trends-content">
+                    <div class="loading">جاري التحميل...</div>
+                </div>
+            </section>
+
+            <!-- Exercise Deep Dive -->
+            <section class="section-card">
+                <h2>🔬 تحليل تمرين محدد</h2>
+                <select class="select-exercise" id="exercise-selector" onchange="loadExerciseDeepDive()">
+                    <option value="">اختر تمرين...</option>
+                </select>
+                <div id="exercise-content">
+                    <div class="empty">اختر تمريناً لعرض التحليل التفصيلي</div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="snackbar" class="snackbar"></div>
+    <script src="/static/vendor/lucide.min.js"></script>
+    <script>if (window.lucide) lucide.createIcons();</script>
+    <script>
+    const PROFILE_ID = '00000000-0000-0000-0000-000000000001';
+    let currentWeeks = 8;
+
+    const MUSCLE_AR = {
+        'chest': 'صدر', 'back': 'ظهر', 'shoulders': 'أكتاف',
+        'legs': 'أرجل', 'quads': 'أمامي', 'hamstrings': 'خلفي',
+        'glutes': 'أليوية', 'biceps': 'بايسبس', 'triceps': 'ترايسبس',
+        'calves': 'بطات', 'abs': 'بطن', 'forearms': 'ساعدين',
+        'lats': 'مجنص', 'traps': 'ترابيس', 'adductors': 'مُقربات'
+    };
+
+    function arMuscle(m) { return MUSCLE_AR[m] || m; }
+
+    function buildHeaders() {
+        return { 'X-Profile-Id': PROFILE_ID };
+    }
+
+    function showSnackbar(msg, type) {
+        type = type || 'success';
+        const s = document.getElementById('snackbar');
+        s.textContent = msg;
+        s.className = 'snackbar show ' + type;
+        setTimeout(function() { s.className = 'snackbar'; }, 2500);
+    }
+
+    function changePeriod() {
+        currentWeeks = parseInt(document.getElementById('period-selector').value);
+        loadAll();
+    }
+
+    function classifyBar(status, weekly_sets) {
+        if (status === 'below_mev') return 'danger';
+        if (status === 'optimal') return 'ok';
+        if (status === 'high') return 'warning';
+        if (status === 'above_mrv') return 'danger';
+        return 'neutral';
+    }
+
+    // ═══════════════════════════════════════════════════
+    // 1) Stats Grid
+    // ═══════════════════════════════════════════════════
+    function renderStats(data) {
+        const grid = document.getElementById('stats-grid');
+        const mb = data.muscle_balance;
+        const effort = data.effort;
+        const plateaus = data.plateaus;
+
+        const totalSets = mb.muscles.reduce(function(a, m) { return a + m.total_sets; }, 0);
+        const ratio = mb.summary.push_pull_ratio;
+        const avgRir = effort.avg_rir;
+
+        let ratioClass = '';
+        if (ratio !== null) {
+            if (ratio >= 0.8 && ratio <= 1.2) ratioClass = 'success';
+            else if (ratio < 0.8) ratioClass = 'danger';
+        }
+
+        let rirClass = '';
+        if (avgRir !== null) {
+            if (avgRir >= 2) rirClass = 'success';
+            else if (avgRir < 1.5) rirClass = 'danger';
+            else rirClass = 'warn';
+        }
+
+        grid.innerHTML =
+            '<div class="stat-card">' +
+                '<div class="stat-value">' + totalSets + '</div>' +
+                '<div class="stat-label">مجموعات في ' + currentWeeks + ' أسابيع</div>' +
+            '</div>' +
+            '<div class="stat-card ' + ratioClass + '">' +
+                '<div class="stat-value">' + (ratio === null ? '—' : ratio) + '</div>' +
+                '<div class="stat-label">Pull / Push Ratio</div>' +
+            '</div>' +
+            '<div class="stat-card ' + rirClass + '">' +
+                '<div class="stat-value">' + (avgRir === null ? '—' : avgRir) + '</div>' +
+                '<div class="stat-label">متوسط RIR</div>' +
+            '</div>' +
+            '<div class="stat-card ' + (plateaus.plateaus.length > 0 ? 'warn' : 'success') + '">' +
+                '<div class="stat-value">' + plateaus.plateaus.length + '</div>' +
+                '<div class="stat-label">تمارين في جمود</div>' +
+            '</div>';
+    }
+
+    // ═══════════════════════════════════════════════════
+    // 2) Muscle Balance
+    // ═══════════════════════════════════════════════════
+    function renderMuscleBalance(mb) {
+        const c = document.getElementById('muscle-balance-content');
+        const cnt = document.getElementById('muscle-count');
+        cnt.textContent = mb.muscles.length;
+
+        if (!mb.muscles.length) {
+            c.innerHTML = '<div class="empty">لا توجد بيانات</div>';
+            return;
+        }
+
+        // Push/Pull/Legs
+        const s = mb.summary;
+        var segmented =
+            '<div class="segmented">' +
+                '<div class="seg-push">Push ' + s.push.pct + '%</div>' +
+                '<div class="seg-pull">Pull ' + s.pull.pct + '%</div>' +
+                '<div class="seg-legs">Legs ' + s.legs.pct + '%</div>' +
+            '</div>';
+
+        // Bars
+        const maxWeekly = Math.max.apply(null, mb.muscles.map(function(m) { return m.weekly_sets; }));
+        const target = 18;
+
+        var bars = mb.muscles.map(function(m) {
+            var w = (m.weekly_sets / Math.max(maxWeekly, target)) * 100;
+            var cls = classifyBar(m.status, m.weekly_sets);
+            var label = m.status === 'below_mev' ? '⚠️' : (m.status === 'optimal' ? '✓' : '↑');
+            return '<div class="bar-row">' +
+                '<div class="bar-label">' + arMuscle(m.muscle) + '</div>' +
+                '<div class="bar-track"><div class="bar-fill ' + cls + '" style="width: ' + Math.max(w, 4) + '%"></div></div>' +
+                '<div class="bar-value">' + m.weekly_sets + ' ' + label + '</div>' +
+            '</div>';
+        }).join('');
+
+        // Push/Pull ratio warning
+        var ratio = s.push_pull_ratio;
+        var warnHtml = '';
+        if (ratio !== null) {
+            if (ratio < 0.8) {
+                warnHtml = '<div class="danger-box">🚨 <strong>Pull/Push = ' + ratio + '</strong> — غير متوازن! تحتاج زيادة تمارين السحب للحماية من إصابة الكتف.</div>';
+            } else if (ratio > 1.4) {
+                warnHtml = '<div class="warning-box">⚠️ Pull أكثر من Push بكثير. لا بأس لكن راقب.</div>';
+            } else {
+                warnHtml = '<div class="success-box">✅ التوازن ممتاز (Ratio = ' + ratio + ')</div>';
+            }
+        }
+
+        c.innerHTML = segmented + bars + warnHtml;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // 3) Effort
+    // ═══════════════════════════════════════════════════
+    function renderEffort(ef) {
+        const c = document.getElementById('effort-content');
+
+        if (!ef.total_sets) {
+            c.innerHTML = '<div class="empty">لا توجد بيانات</div>';
+            return;
+        }
+
+        // RIR Distribution
+        const rirColors = {
+            0: '#dc2626', 1: '#ef4444', 2: '#f59e0b', 3: '#84cc16',
+            4: '#10b981', 5: '#059669'
+        };
+
+        var maxCount = Math.max.apply(null, ef.rir_distribution.map(function(d) { return d.count; }));
+
+        var rirBars = ef.rir_distribution.map(function(d) {
+            var pct = (d.count / maxCount) * 100;
+            var color = rirColors[d.rir] || '#6b7280';
+            return '<div class="rir-bar">' +
+                '<div class="rir-bar-label">RIR ' + d.rir + '</div>' +
+                '<div class="rir-bar-track"><div class="rir-bar-fill" style="width: ' + pct + '%; background: ' + color + '"></div></div>' +
+                '<div class="rir-bar-count">' + d.count + '</div>' +
+            '</div>';
+        }).join('');
+
+        var html =
+            '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">' +
+                '<div class="pr-card">' +
+                    '<div class="pr-value">' + (ef.avg_rir === null ? '—' : ef.avg_rir) + '</div>' +
+                    '<div class="pr-label">متوسط RIR</div>' +
+                '</div>' +
+                '<div class="pr-card">' +
+                    '<div class="pr-value">' + (ef.avg_rpe === null ? '—' : ef.avg_rpe) + '</div>' +
+                    '<div class="pr-label">متوسط RPE</div>' +
+                '</div>' +
+            '</div>' +
+            '<div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 8px;">توزيع RIR (كل مجموعة):</div>' +
+            rirBars;
+
+        if (ef.warning) {
+            html += '<div class="danger-box" style="margin-top: 12px;">' + ef.warning + '</div>';
+        }
+
+        // Coverage
+        html += '<div style="font-size: 0.75rem; color: #9ca3af; margin-top: 12px; text-align: center;">' +
+            'تغطية RIR: ' + ef.coverage.with_rir_pct + '% • ' +
+            'تغطية RPE: ' + ef.coverage.with_rpe_pct + '%' +
+        '</div>';
+
+        c.innerHTML = html;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // 4) Plateaus
+    // ═══════════════════════════════════════════════════
+    function renderPlateaus(pl) {
+        const c = document.getElementById('plateau-content');
+        const cnt = document.getElementById('plateau-count');
+        cnt.textContent = pl.plateaus.length;
+
+        if (!pl.plateaus.length) {
+            c.innerHTML = '<div class="success-box">✅ ممتاز! لا يوجد أي تمرين في جمود حالياً.</div>';
+            return;
+        }
+
+        c.innerHTML = pl.plateaus.map(function(p) {
+            return '<div class="plateau-row">' +
+                '<div>' +
+                    '<div class="plateau-name">' + p.name + '</div>' +
+                    '<div class="plateau-meta">' + p.sessions_count + ' جلسات • e1RM: ' + p.first_e1rm + ' → ' + p.max_e1rm + '</div>' +
+                '</div>' +
+                '<div class="plateau-badge">' + p.improvement_pct + '%</div>' +
+            '</div>';
+        }).join('');
+    }
+
+    // ═══════════════════════════════════════════════════
+    // 5) Trends
+    // ═══════════════════════════════════════════════════
+    function renderTrends(trends) {
+        const c = document.getElementById('trends-content');
+
+        if (!trends.length) {
+            c.innerHTML = '<div class="empty">لا توجد بيانات</div>';
+            return;
+        }
+
+        var maxVol = Math.max.apply(null, trends.map(function(t) { return t.volume; }));
+
+        var bars = trends.map(function(t) {
+            var h = (t.volume / maxVol) * 100;
+            return '<div class="trend-bar" style="height: ' + Math.max(h, 4) + '%" title="' + t.week + ': ' + t.sets + ' set، ' + Math.round(t.volume) + ' كجم"></div>';
+        }).join('');
+
+        var labels = trends.map(function(t) {
+            var w = t.week.split('-')[1];
+            return '<div>' + w + '</div>';
+        }).join('');
+
+        // آخر vs قبلها
+        var last = trends[trends.length - 1];
+        var first = trends[0];
+        var change = first.volume > 0 ? Math.round((last.volume - first.volume) / first.volume * 100) : 0;
+        var trendCls = change > 5 ? 'trend-up' : (change < -5 ? 'trend-down' : 'trend-flat');
+        var trendTxt = change > 0 ? '↗ +' + change + '%' : (change < 0 ? '↘ ' + change + '%' : '→ ثابت');
+
+        c.innerHTML =
+            '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">' +
+                '<span style="font-size: 0.8rem; color: #6b7280;">' + trends.length + ' أسبوع</span>' +
+                '<span class="trend-badge ' + trendCls + '">' + trendTxt + ' مقارنة بالبداية</span>' +
+            '</div>' +
+            '<div class="trend-bars">' + bars + '</div>' +
+            '<div class="trend-bar-labels">' + labels + '</div>';
+    }
+
+    // ═══════════════════════════════════════════════════
+    // 6) Exercise Deep Dive
+    // ═══════════════════════════════════════════════════
+    async function loadExerciseList() {
+        try {
+            const res = await fetch('/api/analytics/exercises', { headers: buildHeaders() });
+            const list = await res.json();
+            const sel = document.getElementById('exercise-selector');
+            list.forEach(function(ex) {
+                var opt = document.createElement('option');
+                opt.value = ex.id;
+                opt.textContent = ex.name + ' (' + ex.sets_count + ' set)';
+                sel.appendChild(opt);
+            });
+        } catch(e) {
+            console.error(e);
+        }
+    }
+
+    async function loadExerciseDeepDive() {
+        const exId = document.getElementById('exercise-selector').value;
+        const c = document.getElementById('exercise-content');
+
+        if (!exId) {
+            c.innerHTML = '<div class="empty">اختر تمريناً لعرض التحليل التفصيلي</div>';
+            return;
+        }
+
+        c.innerHTML = '<div class="loading">جاري التحليل...</div>';
+
+        try {
+            const res = await fetch('/api/analytics/exercise/' + exId + '?days=30&limit=20', { headers: buildHeaders() });
+            const data = await res.json();
+            renderExerciseDeepDive(data);
+        } catch(e) {
+            console.error(e);
+            c.innerHTML = '<div class="empty" style="color: #dc2626;">تعذر التحميل</div>';
+        }
+    }
+
+    function renderExerciseDeepDive(data) {
+        const c = document.getElementById('exercise-content');
+        const sessions = data.sessions || [];
+        const prs = data.prs || {};
+        const trend = data.trend || {};
+
+        if (!sessions.length) {
+            c.innerHTML = '<div class="empty">لا توجد بيانات لهذا التمرين</div>';
+            return;
+        }
+
+        // PRs
+        var prHtml = '<div class="pr-grid" style="margin-bottom: 14px;">' +
+            '<div class="pr-card">' +
+                '<div class="pr-value">' + (prs.max_weight ? prs.max_weight.value : '—') + '</div>' +
+                '<div class="pr-label">أقصى وزن (كجم)</div>' +
+            '</div>' +
+            '<div class="pr-card">' +
+                '<div class="pr-value">' + (prs.best_e1rm ? prs.best_e1rm.value : '—') + '</div>' +
+                '<div class="pr-label">أفضل e1RM</div>' +
+            '</div>' +
+            '<div class="pr-card">' +
+                '<div class="pr-value">' + (prs.best_volume ? Math.round(prs.best_volume.value) : '—') + '</div>' +
+                '<div class="pr-label">أفضل حجم (كجم)</div>' +
+            '</div>' +
+        '</div>';
+
+        // e1RM chart
+        var maxE1rm = Math.max.apply(null, sessions.map(function(s) { return s.e1rm; }));
+        var bars = sessions.map(function(s) {
+            var h = (s.e1rm / maxE1rm) * 100;
+            return '<div class="trend-bar" style="height: ' + Math.max(h, 4) + '%" title="' + s.date.substring(0, 10) + ': ' + s.e1rm + ' kg"></div>';
+        }).join('');
+
+        var chartHtml = '<div style="font-size: 0.8rem; color: #6b7280; margin-bottom: 8px;">e1RM عبر الوقت (آخر ' + sessions.length + ' جلسات)</div>' +
+            '<div class="trend-bars" style="height: 90px;">' + bars + '</div>';
+
+        // Trend badge
+        var trendHtml = '';
+        if (trend.change_pct) {
+            var pct = trend.change_pct.e1rm;
+            if (pct !== null) {
+                var cls = pct > 3 ? 'trend-up' : (pct < -3 ? 'trend-down' : 'trend-flat');
+                var txt = pct > 0 ? '↗ +' + pct + '%' : (pct < 0 ? '↘ ' + pct + '%' : '→ ثابت');
+                trendHtml = '<div style="text-align: center; margin-top: 12px;">' +
+                    '<span class="trend-badge ' + cls + '">e1RM آخر 30 يوم: ' + txt + '</span>' +
+                '</div>';
+            }
+        }
+
+        c.innerHTML = prHtml + chartHtml + trendHtml;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // MAIN
+    // ═══════════════════════════════════════════════════
+    async function loadAll() {
+        try {
+            const res = await fetch('/api/analytics/overview?weeks=' + currentWeeks, { headers: buildHeaders() });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+
+            renderStats(data);
+            renderMuscleBalance(data.muscle_balance);
+            renderEffort(data.effort);
+            renderPlateaus(data.plateaus);
+            renderTrends(data.trends);
+        } catch(e) {
+            console.error(e);
+            showSnackbar('تعذر تحميل البيانات', 'error');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadAll();
+        loadExerciseList();
+    });
+    </script>
+</body>
+</html>

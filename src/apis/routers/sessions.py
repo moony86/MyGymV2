@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Header
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from typing import List, Any
 from decimal import Decimal
 from datetime import datetime, timedelta, timezone
@@ -14,6 +14,7 @@ from src.services.units_service import WeightFormatter
 from src.domain.entities import Set, Session
 from src.domain.enums import SessionStatus, SetType
 from src.domain.profile_context import get_current_profile_id
+from src.apis.deps import get_db
 from src.infrastructure.db.models import ExerciseTable, SetTable, PerformedExerciseTable, PlanExerciseTable, SessionTable, ClientOperationTable, DEFAULT_PROFILE_ID
 from src.infrastructure.db.connection import SessionLocal
 from src.queries.metrics_queries import get_muscle_sets_by_week
@@ -260,6 +261,84 @@ def get_current_weekly_muscle_volume():
         }
     finally:
         db.close()
+
+
+@router.get("/workouts/history/detailed")
+def get_workout_history_detailed(
+    limit: int = 30,
+    db=Depends(get_db),
+    profile_id: str = Depends(get_current_profile_id),
+):
+    """يرجّع الجلسات المكتملة مع كل الـ sets في طلب واحد — لحل N+1 Query."""
+    from collections import defaultdict
+
+    # جيب آخر `limit` جلسة مكتملة
+    sessions = (
+        db.query(SessionTable)
+        .filter(
+            SessionTable.status == "COMPLETED",
+            SessionTable.profile_id == profile_id,
+        )
+        .order_by(SessionTable.started_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    if not sessions:
+        return []
+
+    session_ids = [s.id for s in sessions]
+
+    # جيب كل sets لهذي الجلسات في query واحدة
+    all_sets = (
+        db.query(SetTable, PerformedExerciseTable, ExerciseTable)
+        .join(PerformedExerciseTable, SetTable.performed_exercise_id == PerformedExerciseTable.id)
+        .join(ExerciseTable, PerformedExerciseTable.exercise_id == ExerciseTable.id)
+        .filter(PerformedExerciseTable.session_id.in_(session_ids))
+        .all()
+    )
+
+    # جمّع sets حسب session_id
+    sets_by_session = defaultdict(list)
+    for set_row, pe, ex in all_sets:
+        sets_by_session[pe.session_id].append({
+            "id": str(set_row.id),
+            "performed_exercise_id": str(set_row.performed_exercise_id),
+            "exercise_name": ex.name,
+            "set_order": set_row.set_order,
+            "weight": float(set_row.weight) if set_row.weight else 0,
+            "reps": set_row.reps,
+            "rpe": set_row.rpe,
+            "rir": set_row.rir,
+            "set_type": set_row.set_type,
+            "volume_kg": float(set_row.weight or 0) * (set_row.reps or 0),
+        })
+
+    # ابنِ الـ response
+    result = []
+    for sess in sessions:
+        s_sets = sets_by_session.get(sess.id, [])
+        total_volume = sum(s["volume_kg"] for s in s_sets)
+        result.append({
+            "session": {
+                "id": str(sess.id),
+                "status": sess.status,
+                "started_at": sess.started_at.isoformat() if sess.started_at else None,
+                "ended_at": sess.ended_at.isoformat() if sess.ended_at else None,
+                "notes": sess.notes,
+                "plan_id": str(sess.plan_id) if sess.plan_id else None,
+                "volume_kg": total_volume,
+                "sets_count": len(s_sets),
+                "duration_minutes": (
+                    int((sess.ended_at - sess.started_at).total_seconds() / 60)
+                    if sess.ended_at and sess.started_at else None
+                ),
+            },
+            "sets": s_sets,
+            "total_volume": total_volume,
+        })
+
+    return result
 
 
 @router.get("/workouts/{session_id}", response_model=ActiveSessionDTO)

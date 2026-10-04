@@ -743,26 +743,10 @@ async function loadHistory() {
             return;
         }
 
-        // استخدم endpoint الـ batch (طلب واحد بدل N+1)
-        let detailedSessions;
-        try {
-            const batchData = await API.get('/workouts/history/detailed?limit=30');
-            detailedSessions = batchData.map(item => ({
-                summary: item.session,
-                details: {
-                    session: item.session,
-                    sets: item.sets,
-                    total_volume: item.total_volume,
-                },
-            }));
-        } catch(batchErr) {
-            console.warn('Batch endpoint فشل، استخدام N+1', batchErr);
-            // fallback للطريقة القديمة
-            detailedSessions = await Promise.all(sessions.map(async session => ({
-                summary: session,
-                details: await API.get(`/workouts/${session.id}`),
-            })));
-        }
+        const detailedSessions = await Promise.all(sessions.map(async session => ({
+            summary: session,
+            details: await API.get(`/workouts/${session.id}`),
+        })));
 
         Dashboard.renderTimeline(detailedSessions);
         Dashboard.renderStreak(sessions);
