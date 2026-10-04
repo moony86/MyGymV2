@@ -1,7 +1,6 @@
 import uuid
 import uuid6
 from decimal import Decimal
-from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 from sqlalchemy.orm import Session as DbSession
 from sqlalchemy import and_, select
@@ -17,78 +16,19 @@ class SessionService:
         self.db = db_session
         self.profile_id = profile_id or get_current_profile_id()
 
-    # --- المساعدات الداخلية ---
+    # --- ��������� �������� ---
     def _to_domain_session(self, orm_session: SessionTable) -> Session:
         return Session.model_validate(orm_session, from_attributes=True)
 
     def _to_domain_set(self, orm_set: SetTable) -> Set:
         return Set.model_validate(orm_set, from_attributes=True)
 
-    def _auto_abandon_stale_sessions(self, max_hours: int = 12, no_sets_hours: int = 4) -> int:
-        """يُلغي تلقائياً الجلسات النشطة القديمة أو الفارغة.
-        يُنفَّذ قبل أي عملية تعتمد على الجلسة النشطة.
-
-        Args:
-            max_hours: أقصى عمر لجلسة ACTIVE (بأي حال)
-            no_sets_hours: أقصى عمر لجلسة ACTIVE بدون أي sets
-        Returns:
-            عدد الجلسات التي أُلغيت
-        """
-        now = datetime.now(timezone.utc).replace(tzinfo=None)
-
-        active_sessions = self.db.query(SessionTable).filter(
-            SessionTable.status == SessionStatus.ACTIVE.value,
-            SessionTable.profile_id == self.profile_id,
-        ).all()
-
-        if not active_sessions:
-            return 0
-
-        abandoned_count = 0
-        for sess in active_sessions:
-            try:
-                started = sess.started_at
-                if isinstance(started, str):
-                    started = datetime.fromisoformat(started.replace('Z', ''))
-                if started.tzinfo is not None:
-                    started = started.replace(tzinfo=None)
-                age_hours = (now - started).total_seconds() / 3600
-            except Exception:
-                age_hours = 0
-
-            sets_count = self.db.query(SetTable).join(PerformedExerciseTable).filter(
-                PerformedExerciseTable.session_id == sess.id
-            ).count()
-
-            should_abandon = False
-            reason = ""
-
-            if age_hours > max_hours:
-                should_abandon = True
-                reason = f"عمرها {age_hours:.1f} ساعة"
-            elif sets_count == 0 and age_hours > no_sets_hours:
-                should_abandon = True
-                reason = f"فارغة منذ {age_hours:.1f} ساعة"
-
-            if should_abandon:
-                sess.status = SessionStatus.ABANDONED.value
-                sess.ended_at = utc_now()
-                abandoned_count += 1
-                print(f"  [auto-abandon] session {sess.id[:8]}... ({reason})")
-
-        if abandoned_count > 0:
-            self.db.commit()
-        return abandoned_count
-
-    # --- 1. بدء جلسة جديدة ---
+    # --- 1. ��� ���� ����� ---
     def create_session(
         self,
         notes: Optional[str] = None,
         plan_id: Optional[str] = None
     ) -> Session:
-        # أولاً: نظّف الجلسات القديمة/الفارغة تلقائياً
-        self._auto_abandon_stale_sessions()
-
         active = self.db.query(SessionTable).filter(
             SessionTable.status == SessionStatus.ACTIVE.value,
             SessionTable.profile_id == self.profile_id,
@@ -109,11 +49,8 @@ class SessionService:
         self.db.refresh(orm_session)
         return self._to_domain_session(orm_session)
 
-    # --- 2. استرجاع الجلسة النشطة ---
+    # --- 2. ������� ������ ������ ---
     def get_active_session(self) -> Optional[Session]:
-        # نظّف الجلسات القديمة أولاً
-        self._auto_abandon_stale_sessions()
-
         orm_session = self.db.query(SessionTable).filter(
             SessionTable.status == SessionStatus.ACTIVE.value,
             SessionTable.profile_id == self.profile_id,
@@ -122,7 +59,7 @@ class SessionService:
             return None
         return self._to_domain_session(orm_session)
 
-    # --- 3. إضافة مجموعة (Set) ---
+    # --- 3. ����� ������ (Set) ---
     def add_set(
         self,
         session_id: uuid.UUID,
@@ -178,7 +115,7 @@ class SessionService:
             current_set_count = self.db.query(SetTable).filter(
                 SetTable.performed_exercise_id == orm_performed.id
             ).count()
-            set_order = current_set_count + 1
+            set_order = current_set_count
 
         weight_decimal = WeightFormatter.to_decimal(weight)
         if weight_decimal < 0:
@@ -202,7 +139,7 @@ class SessionService:
 
         return self._to_domain_set(orm_set)
 
-    # --- 4. إنهاء الجلسة ---
+    # --- 4. ����� ������ ---
     def finish_session(self, session_id: uuid.UUID) -> Session:
         orm_session = self.db.query(SessionTable).filter(
             SessionTable.id == str(session_id),
@@ -228,7 +165,7 @@ class SessionService:
         self.db.refresh(orm_session)
         return self._to_domain_session(orm_session)
 
-    # --- 5. إلغاء الجلسة (Abandon) ---
+    # --- 5. ����� ������ (Abandon) ---
     def abandon_session(self, session_id: uuid.UUID) -> Session:
         orm_session = self.db.query(SessionTable).filter(
             SessionTable.id == str(session_id),
@@ -254,7 +191,7 @@ class SessionService:
         results = self.db.execute(stmt).scalars().all()
         return [self._to_domain_session(s) for s in results]
 
-    # --- 7. استعلامات واسترجاع الجلسات ---
+    # --- 7. ��������� �������� ������� ---
     def get_completed_sessions(self, limit: int = 30):
         stmt = (
             select(SessionTable)
@@ -351,6 +288,7 @@ class SessionService:
         if not orm_session:
             raise ValueError("Session not found.")
 
+        # ���� �������� ��������� (Cascade Delete) �� ����� �������ʡ ���� ��� ������ ���
         self.db.delete(orm_session)
         self.db.commit()
         return {"deleted": True}
