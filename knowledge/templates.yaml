@@ -70,13 +70,13 @@ templates:
   rotation_pattern:
     - slot: 1
       type: full_body_focus_a
-      target_categories: [group.chest, group.back, group.legs, group.shoulders]
+      target_categories: [group.chest, group.back, group.legs, group.shoulders, muscle.calves, muscle.abs]
     - slot: 2
       type: full_body_focus_b
-      target_categories: [group.legs, group.back, group.chest, group.arms]
+      target_categories: [group.legs, group.back, group.chest, group.arms, muscle.calves, muscle.abs]
     - slot: 3
       type: full_body_focus_c
-      target_categories: [group.chest, group.legs, group.back, group.core]
+      target_categories: [group.chest, group.legs, group.back, group.core, muscle.calves]
 
   advantages:
 

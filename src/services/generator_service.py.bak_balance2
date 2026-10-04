@@ -286,31 +286,21 @@ class GeneratorService:
         target_categories: list, max_count: int
     ) -> list:
         """إعادة توازن الجلسة:
-        - حد أقصى 1 لكل: chest, back, shoulders, legs
+        - حد أقصى 1 لكل: chest, back, shoulders
+        - حد أقصى 1 للأرجل (اختيار واحد بين squat/hinge/leg_press)
         - ضمان وجود calves و abs في كل جلسة
         - ضمان تنوع movement_pattern
         """
-        # خريطة: muscle.chest.middle -> chest
-        # خذ الجزء الثاني من الـ ID بعد "muscle."
         CAT_MAP = {
             'chest': 'chest',
-            'lats': 'back',
-            'upper_back': 'back',
-            'lower_back': 'back',
-            'traps': 'back',
-            'front_delts': 'shoulders',
-            'side_delts': 'shoulders',
-            'rear_delts': 'shoulders',
-            'quads': 'legs',
-            'hamstrings': 'legs',
-            'glutes': 'legs',
-            'adductors': 'legs',
+            'back': 'back', 'lats': 'back', 'traps': 'back',
+            'upper_back': 'back', 'lower_back': 'back',
+            'shoulders': 'shoulders',
+            'legs': 'legs', 'quads': 'legs', 'hamstrings': 'legs',
+            'glutes': 'legs', 'adductors': 'legs',
             'calves': 'calves',
-            'abs': 'abs',
-            'obliques': 'abs',
-            'biceps': 'arms',
-            'triceps': 'arms',
-            'forearms': 'arms',
+            'abs': 'abs', 'obliques': 'abs',
+            'biceps': 'arms', 'triceps': 'arms', 'forearms': 'arms',
         }
         MAX_PER_CAT = {
             'chest': 1, 'back': 1, 'shoulders': 1,
@@ -319,17 +309,10 @@ class GeneratorService:
         DEFAULT_MAX = 1
 
         def get_cat(ex):
-            """حدد الفئة من primary_muscles (list)."""
-            pms = getattr(ex, 'primary_muscles', []) or []
-            if not pms:
-                return 'other'
-            # خذ أول عضلة: "muscle.chest.middle" -> "chest"
-            first = pms[0]
-            parts = first.split('.')
-            # parts = ['muscle', 'chest', 'middle']
-            key = parts[1] if len(parts) >= 2 else first
-            return CAT_MAP.get(key, 'other')
+            pm = (getattr(ex, 'primary_muscle', '') or '').lower()
+            return CAT_MAP.get(pm, 'other')
 
+        # احتفظ بترتيب الاختيار الأصلي مع احترام الحدود
         cat_count = {}
         seen_patterns = set()
         balanced = []
@@ -351,13 +334,9 @@ class GeneratorService:
             if cat_count.get(req, 0) == 0:
                 for ex in all_exercises:
                     if get_cat(ex) == req:
-                        pattern = getattr(ex, 'movement_pattern', '') or ''
-                        if pattern not in seen_patterns:
-                            balanced.append(ex)
-                            cat_count[req] = 1
-                            if pattern:
-                                seen_patterns.add(pattern)
-                            break
+                        balanced.append(ex)
+                        cat_count[req] = 1
+                        break
 
         return balanced[:max_count]
 

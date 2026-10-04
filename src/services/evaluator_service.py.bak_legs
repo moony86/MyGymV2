@@ -67,15 +67,11 @@ class EvaluatorService:
             coverage_rules["optional_muscles"], muscle_volume, volume_rules
         )
 
-        # overall_status يعتمد على العضلات الرئيسية فقط
-        # العضلات الثانوية (calves/abs/forearms/adductors) تُعرض كتحذير
-        # لكن لا تُفشل البرنامج
         overall_status = "PASS"
         if any(r["status"] == "below_minimum" for r in major_report):
             overall_status = "FAIL"
-        elif any(r["status"] in ("below_minimum", "above_maximum") for r in major_report):
+        elif any(r["status"] in ("below_minimum", "above_maximum") for r in major_report + optional_report):
             overall_status = "WARNING"
-        # لا نرفع الحالة بسبب optional فقط
 
         return {
             "program_group_id": program_group_id,
@@ -89,20 +85,6 @@ class EvaluatorService:
 
     # ------------------------------------------------------------------
     def _collect_muscle_volume(self, plans: list) -> tuple[dict, list]:
-        """يحسب الحجم لكل عضلة.
-        قواعد مهمة:
-        - العضلات الأساسية تُحسب كاملة (1.0)
-        - العضلات الثانوية تُحسب بـ 0.25
-        - لكل تمرين، عضلة أساسية واحدة فقط تُحسب لكل مجموعة عضلية (group)
-          (لتفادي مشكلة: RDL عنده glutes + hamstrings، كلاهما في group.legs)
-        - العضلات الاختيارية (calves, abs, forearms, adductors) لا تُحسب في
-          المجموعات الرئيسية (مثل group.legs) لتفادي التضخيم المزدوج
-        """
-        OPTIONAL_MUSCLES = {
-            'muscle.calves', 'muscle.abs', 'muscle.obliques',
-            'muscle.transverse_abdominis', 'muscle.forearms', 'muscle.adductors',
-        }
-
         muscle_volume: dict = defaultdict(float)
         unresolved: list = []
 
@@ -123,43 +105,16 @@ class EvaluatorService:
             exercise = self.provider.exercise(variant.exercise)
             sets = pe.target_sets or 0
 
-            # 1) العضلات الأساسية — عضلة واحدة فقط لكل group
-            group_seen = set()
             for muscle_id in exercise.primary_muscles:
-                muscle = self.provider.muscle(muscle_id)
-                group = getattr(muscle, 'group', None) if muscle else None
-
-                # العضلات الاختيارية تُحسب دائماً (مثل calves)
-                if muscle_id in OPTIONAL_MUSCLES:
-                    muscle_volume[muscle_id] += sets * 1.0
-                    continue
-
-                # للمجموعات الرئيسية: عضلة واحدة فقط لكل group
-                if group and group not in group_seen:
-                    muscle_volume[muscle_id] += sets * 1.0
-                    group_seen.add(group)
-
-            # 2) العضلات الثانوية — نتجاهل الاختيارية (محسوبة أصلاً)
+                muscle_volume[muscle_id] += sets * 1.0
             for muscle_id in exercise.secondary_muscles:
-                if muscle_id in OPTIONAL_MUSCLES:
-                    continue
                 muscle_volume[muscle_id] += sets * SECONDARY_MUSCLE_WEIGHT
 
         return dict(muscle_volume), unresolved
 
     def _roll_up_to_groups(self, muscle_volume: dict) -> dict:
-        """يجمع حجم العضلات في مجموعات.
-        نتجاهل العضلات الاختيارية (calves, abs, forearms, adductors)
-        لأنها تُقاس مباشرة كعضلات وليس كجزء من المجموعة الأم.
-        """
-        OPTIONAL_MUSCLES = {
-            'muscle.calves', 'muscle.abs', 'muscle.obliques',
-            'muscle.transverse_abdominis', 'muscle.forearms', 'muscle.adductors',
-        }
         group_volume: dict = defaultdict(float)
         for muscle_id, volume in muscle_volume.items():
-            if muscle_id in OPTIONAL_MUSCLES:
-                continue
             muscle = self.provider.muscle(muscle_id)
             if muscle and getattr(muscle, "group", None):
                 group_volume[muscle.group] += volume

@@ -74,9 +74,9 @@ exercise_limits:
 
     low: 5
 
-    high: 6
+    high: 7
 
-  maximum: 6
+  maximum: 8
 
 # ==========================================================
 # DUPLICATION
