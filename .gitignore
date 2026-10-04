@@ -19,3 +19,12 @@ backups/
 # Keys & Certificates
 *.key
 *.crt
+
+# Backup files
+*.bak
+*.bak2
+*.iso
+*.iso_bak
+*.iso_bak2
+*.before_*
+*.backup_*
