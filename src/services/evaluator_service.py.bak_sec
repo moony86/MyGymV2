@@ -26,9 +26,6 @@ from src.infrastructure.db.models import ExerciseTable, PlanExerciseTable, Worko
 
 SECONDARY_MUSCLE_WEIGHT = 0.25
 
-# العضلات الرئيسية — لا نحسب لها secondaries (لتفادي التضخيم)
-MAJOR_GROUPS = {'group.chest', 'group.back', 'group.shoulders', 'group.legs'}
-
 GOAL_TO_TRAINING_RULES = {
     "HYPERTROPHY": "hypertrophy",
     "STRENGTH": "strength",
@@ -142,14 +139,10 @@ class EvaluatorService:
                     muscle_volume[muscle_id] += sets * 1.0
                     group_seen.add(group)
 
-            # 2) العضلات الثانوية — نتجاهل الاختيارية + المجموعات الرئيسية
+            # 2) العضلات الثانوية — نتجاهل الاختيارية (محسوبة أصلاً)
             for muscle_id in exercise.secondary_muscles:
                 if muscle_id in OPTIONAL_MUSCLES:
                     continue
-                sec_muscle = self.provider.muscle(muscle_id)
-                sec_group = getattr(sec_muscle, 'group', None) if sec_muscle else None
-                if sec_group in MAJOR_GROUPS:
-                    continue  # لا نحسب secondary لمجموعة رئيسية (لتفادي الازدواج)
                 muscle_volume[muscle_id] += sets * SECONDARY_MUSCLE_WEIGHT
 
         return dict(muscle_volume), unresolved

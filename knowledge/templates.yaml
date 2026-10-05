@@ -249,13 +249,13 @@ templates:
   rotation_pattern:
     - slot: 1
       type: push
-      target_categories: [group.chest, group.shoulders, group.arms]
+      target_categories: [muscle.chest.middle, muscle.chest.upper, muscle.front_delts, muscle.side_delts, muscle.triceps]
     - slot: 2
       type: pull
-      target_categories: [group.back, group.arms, group.shoulders]
+      target_categories: [muscle.lats, muscle.upper_back, muscle.traps, muscle.biceps]
     - slot: 3
       type: legs
-      target_categories: [group.legs, group.core]
+      target_categories: [muscle.quads, muscle.hamstrings, muscle.glutes, muscle.calves, muscle.abs]
 
   advantages:
 

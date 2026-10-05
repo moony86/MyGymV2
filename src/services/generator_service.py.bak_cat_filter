@@ -361,46 +361,12 @@ class GeneratorService:
             key = parts[1] if len(parts) >= 2 else first
             return CAT_MAP.get(key, 'other')
 
-        # ═══ بناء قائمة CATs مسموحة من target_categories (لأيام Split) ═══
-        allowed_cats = set()
-        LEG_CATS = {'quads', 'hamstrings', 'glutes', 'adductors'}
-        if not is_full_body:
-            for tc in (target_categories or []):
-                parts = tc.split('.')
-                if len(parts) < 2:
-                    continue
-                if parts[0] == 'muscle':
-                    c = CAT_MAP.get(parts[1])
-                    if c:
-                        allowed_cats.add(c)
-                elif parts[0] == 'group':
-                    g = parts[1]
-                    if g == 'chest':
-                        allowed_cats.add('chest')
-                    elif g == 'back':
-                        allowed_cats.add('back')
-                    elif g == 'shoulders':
-                        allowed_cats.add('shoulders')
-                    elif g == 'arms':
-                        allowed_cats.update(['biceps', 'triceps', 'forearms'])
-                    elif g == 'legs':
-                        allowed_cats.update(LEG_CATS | {'calves'})
-                    elif g == 'core':
-                        allowed_cats.add('abs')
-            # توسيع فئات الأرجل
-            if allowed_cats & LEG_CATS:
-                allowed_cats.update(LEG_CATS)
-
         cat_count = {}
         seen_patterns = set()
         balanced = []
 
         for ex in selected:
             cat = get_cat(ex)
-
-            # فلتر Split: تجاهل الفئات غير المسموحة
-            if not is_full_body and allowed_cats and cat != 'other' and cat not in allowed_cats:
-                continue
             limit = MAX_PER_CAT.get(cat, DEFAULT_MAX)
             current = cat_count.get(cat, 0)
             pattern = getattr(ex, 'movement_pattern', '') or ''
