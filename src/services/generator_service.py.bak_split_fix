@@ -199,42 +199,22 @@ class GeneratorService:
         recommended_high = exercise_limits.get("recommended", {}).get("high")
         max_per_session = recommended_high or exercise_limits.get("maximum", MAX_EXERCISES_PER_DAY)
 
-        # اكتشف إذا كان اليوم Full Body أو Split (Upper/Lower/PPL)
-        slot_type_str = ""
-        if rotation_pattern:
-            slot_type_str = current_slot.get("type", "") or ""
-        is_full_body_day = (not slot_type_str) or slot_type_str.startswith("full_body")
-
         selected_exercises = self._round_robin_select(
             all_exercises, target_categories, max_count=max_per_session
         )
 
-        # فقط لأيام Full Body — أجبر تغطية كل الحركات
-        if is_full_body_day:
-            selected_exercises = self._ensure_movement_coverage(
-                selected_exercises, all_exercises, required_movements, max_per_session
-            )
+        selected_exercises = self._ensure_movement_coverage(
+            selected_exercises, all_exercises, required_movements, max_per_session
+        )
 
         if len(selected_exercises) < min_per_session:
-            if is_full_body_day:
-                selected_exercises = self._fill_to_minimum(
-                    selected_exercises, all_exercises, min_per_session, max_per_session
-                )
-            else:
-                # أيام Split — املأ من الفئات المسموحة فقط
-                allowed = set(target_categories)
-                for ex in all_exercises:
-                    if len(selected_exercises) >= min_per_session:
-                        break
-                    if ex in selected_exercises:
-                        continue
-                    if self._exercise_primary_groups(ex) & allowed:
-                        selected_exercises.append(ex)
+            selected_exercises = self._fill_to_minimum(
+                selected_exercises, all_exercises, min_per_session, max_per_session
+            )
 
-        # إعادة توازن الجلسة
+        # إعادة توازن الجلسة: منع تكرار الفئات + ضمان البطات والبطن
         selected_exercises = self._balance_session(
-            selected_exercises, all_exercises, target_categories, max_per_session,
-            is_full_body=is_full_body_day,
+            selected_exercises, all_exercises, target_categories, max_per_session
         )
 
         selected_exercises = selected_exercises[:max_per_session]
@@ -303,8 +283,7 @@ class GeneratorService:
 
     def _balance_session(
         self, selected: list, all_exercises: list,
-        target_categories: list, max_count: int,
-        is_full_body: bool = True
+        target_categories: list, max_count: int
     ) -> list:
         """إعادة توازن الجلسة:
         - حد أقصى 1 لكل: chest, back, shoulders, legs
@@ -314,39 +293,29 @@ class GeneratorService:
         # خريطة: muscle.chest.middle -> chest
         # خذ الجزء الثاني من الـ ID بعد "muscle."
         CAT_MAP = {
-            # upper
             'chest': 'chest',
-            'lats': 'back', 'upper_back': 'back', 'lower_back': 'back', 'traps': 'back',
-            'front_delts': 'shoulders', 'side_delts': 'shoulders', 'rear_delts': 'shoulders',
-            'biceps': 'biceps',
-            'triceps': 'triceps',
-            'forearms': 'forearms',
-            # lower
-            'quads': 'quads',
-            'hamstrings': 'hamstrings',
-            'glutes': 'glutes',
-            'adductors': 'adductors',
+            'lats': 'back',
+            'upper_back': 'back',
+            'lower_back': 'back',
+            'traps': 'back',
+            'front_delts': 'shoulders',
+            'side_delts': 'shoulders',
+            'rear_delts': 'shoulders',
+            'quads': 'legs',
+            'hamstrings': 'legs',
+            'glutes': 'legs',
+            'adductors': 'legs',
             'calves': 'calves',
-            # core
-            'abs': 'abs', 'obliques': 'abs', 'transverse_abdominis': 'abs',
+            'abs': 'abs',
+            'obliques': 'abs',
+            'biceps': 'arms',
+            'triceps': 'arms',
+            'forearms': 'arms',
         }
-        # ═══ حدود ديناميكية حسب نوع اليوم ═══
-        if is_full_body:
-            # Full Body: 1 لكل عضلة
-            MAX_PER_CAT = {
-                'chest': 1, 'back': 1, 'shoulders': 1,
-                'biceps': 1, 'triceps': 1, 'forearms': 1,
-                'quads': 1, 'hamstrings': 1, 'glutes': 1, 'adductors': 1, 'calves': 1,
-                'abs': 1,
-            }
-        else:
-            # Split (Upper/Lower/PPL): اسمح بـ 2 للعضلات الكبيرة
-            MAX_PER_CAT = {
-                'chest': 2, 'back': 2, 'shoulders': 2,
-                'biceps': 1, 'triceps': 1, 'forearms': 1,
-                'quads': 2, 'hamstrings': 2, 'glutes': 2, 'adductors': 1, 'calves': 1,
-                'abs': 1,
-            }
+        MAX_PER_CAT = {
+            'chest': 1, 'back': 1, 'shoulders': 1,
+            'legs': 1, 'calves': 1, 'abs': 1, 'arms': 1,
+        }
         DEFAULT_MAX = 1
 
         def get_cat(ex):
@@ -371,36 +340,24 @@ class GeneratorService:
             current = cat_count.get(cat, 0)
             pattern = getattr(ex, 'movement_pattern', '') or ''
 
-            # في Split — امنع تكرار hamstrings/quads في نفس اليوم
-            skip = False
-            if not is_full_body and cat in ('quads', 'hamstrings', 'glutes'):
-                # احسب كم leg exercise موجود
-                leg_count = sum(cat_count.get(k, 0) for k in ('quads', 'hamstrings', 'glutes'))
-                if leg_count >= 2:
-                    skip = True
-
-            if not skip and current < limit and pattern not in seen_patterns:
+            if current < limit and pattern not in seen_patterns:
                 balanced.append(ex)
                 cat_count[cat] = current + 1
                 if pattern:
                     seen_patterns.add(pattern)
 
-        # ضمان calves + abs (فقط لأيام Full Body أو Lower)
-        leg_cats = {'group.legs', 'muscle.quads', 'muscle.hamstrings',
-                    'muscle.glutes', 'muscle.adductors', 'muscle.calves'}
-        has_lower = is_full_body or bool(leg_cats & set(target_categories or []))
-        if has_lower:
-            for req in ['calves', 'abs']:
-                if cat_count.get(req, 0) == 0:
-                    for ex in all_exercises:
-                        if get_cat(ex) == req:
-                            pattern = getattr(ex, 'movement_pattern', '') or ''
-                            if pattern not in seen_patterns:
-                                balanced.append(ex)
-                                cat_count[req] = 1
-                                if pattern:
-                                    seen_patterns.add(pattern)
-                                break
+        # ضمان calves + abs
+        for req in ['calves', 'abs']:
+            if cat_count.get(req, 0) == 0:
+                for ex in all_exercises:
+                    if get_cat(ex) == req:
+                        pattern = getattr(ex, 'movement_pattern', '') or ''
+                        if pattern not in seen_patterns:
+                            balanced.append(ex)
+                            cat_count[req] = 1
+                            if pattern:
+                                seen_patterns.add(pattern)
+                            break
 
         return balanced[:max_count]
 

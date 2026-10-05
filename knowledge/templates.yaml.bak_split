@@ -160,16 +160,10 @@ templates:
   rotation_pattern:
     - slot: 1
       type: upper
-      target_categories: [muscle.chest.middle, muscle.chest.upper, muscle.lats, muscle.side_delts, muscle.biceps, muscle.triceps]
+      target_categories: [group.chest, group.back, group.shoulders, group.arms]
     - slot: 2
       type: lower
-      target_categories: [muscle.quads, muscle.hamstrings, muscle.calves, muscle.abs]
-    - slot: 3
-      type: upper
-      target_categories: [muscle.chest.middle, muscle.chest.upper, muscle.upper_back, muscle.front_delts, muscle.triceps, muscle.biceps]
-    - slot: 4
-      type: lower
-      target_categories: [muscle.glutes, muscle.quads, muscle.hamstrings, muscle.calves, muscle.abs]
+      target_categories: [group.legs, group.core]
 
   advantages:
 

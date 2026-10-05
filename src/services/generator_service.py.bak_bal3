@@ -314,39 +314,29 @@ class GeneratorService:
         # خريطة: muscle.chest.middle -> chest
         # خذ الجزء الثاني من الـ ID بعد "muscle."
         CAT_MAP = {
-            # upper
             'chest': 'chest',
-            'lats': 'back', 'upper_back': 'back', 'lower_back': 'back', 'traps': 'back',
-            'front_delts': 'shoulders', 'side_delts': 'shoulders', 'rear_delts': 'shoulders',
-            'biceps': 'biceps',
-            'triceps': 'triceps',
-            'forearms': 'forearms',
-            # lower
-            'quads': 'quads',
-            'hamstrings': 'hamstrings',
-            'glutes': 'glutes',
-            'adductors': 'adductors',
+            'lats': 'back',
+            'upper_back': 'back',
+            'lower_back': 'back',
+            'traps': 'back',
+            'front_delts': 'shoulders',
+            'side_delts': 'shoulders',
+            'rear_delts': 'shoulders',
+            'quads': 'legs',
+            'hamstrings': 'legs',
+            'glutes': 'legs',
+            'adductors': 'legs',
             'calves': 'calves',
-            # core
-            'abs': 'abs', 'obliques': 'abs', 'transverse_abdominis': 'abs',
+            'abs': 'abs',
+            'obliques': 'abs',
+            'biceps': 'arms',
+            'triceps': 'arms',
+            'forearms': 'arms',
         }
-        # ═══ حدود ديناميكية حسب نوع اليوم ═══
-        if is_full_body:
-            # Full Body: 1 لكل عضلة
-            MAX_PER_CAT = {
-                'chest': 1, 'back': 1, 'shoulders': 1,
-                'biceps': 1, 'triceps': 1, 'forearms': 1,
-                'quads': 1, 'hamstrings': 1, 'glutes': 1, 'adductors': 1, 'calves': 1,
-                'abs': 1,
-            }
-        else:
-            # Split (Upper/Lower/PPL): اسمح بـ 2 للعضلات الكبيرة
-            MAX_PER_CAT = {
-                'chest': 2, 'back': 2, 'shoulders': 2,
-                'biceps': 1, 'triceps': 1, 'forearms': 1,
-                'quads': 2, 'hamstrings': 2, 'glutes': 2, 'adductors': 1, 'calves': 1,
-                'abs': 1,
-            }
+        MAX_PER_CAT = {
+            'chest': 1, 'back': 1, 'shoulders': 1,
+            'legs': 1, 'calves': 1, 'abs': 1, 'arms': 1,
+        }
         DEFAULT_MAX = 1
 
         def get_cat(ex):
@@ -371,24 +361,14 @@ class GeneratorService:
             current = cat_count.get(cat, 0)
             pattern = getattr(ex, 'movement_pattern', '') or ''
 
-            # في Split — امنع تكرار hamstrings/quads في نفس اليوم
-            skip = False
-            if not is_full_body and cat in ('quads', 'hamstrings', 'glutes'):
-                # احسب كم leg exercise موجود
-                leg_count = sum(cat_count.get(k, 0) for k in ('quads', 'hamstrings', 'glutes'))
-                if leg_count >= 2:
-                    skip = True
-
-            if not skip and current < limit and pattern not in seen_patterns:
+            if current < limit and pattern not in seen_patterns:
                 balanced.append(ex)
                 cat_count[cat] = current + 1
                 if pattern:
                     seen_patterns.add(pattern)
 
         # ضمان calves + abs (فقط لأيام Full Body أو Lower)
-        leg_cats = {'group.legs', 'muscle.quads', 'muscle.hamstrings',
-                    'muscle.glutes', 'muscle.adductors', 'muscle.calves'}
-        has_lower = is_full_body or bool(leg_cats & set(target_categories or []))
+        has_lower = is_full_body or ('group.legs' in (target_categories or []))
         if has_lower:
             for req in ['calves', 'abs']:
                 if cat_count.get(req, 0) == 0:

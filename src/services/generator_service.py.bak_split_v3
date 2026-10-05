@@ -330,23 +330,13 @@ class GeneratorService:
             # core
             'abs': 'abs', 'obliques': 'abs', 'transverse_abdominis': 'abs',
         }
-        # ═══ حدود ديناميكية حسب نوع اليوم ═══
-        if is_full_body:
-            # Full Body: 1 لكل عضلة
-            MAX_PER_CAT = {
-                'chest': 1, 'back': 1, 'shoulders': 1,
-                'biceps': 1, 'triceps': 1, 'forearms': 1,
-                'quads': 1, 'hamstrings': 1, 'glutes': 1, 'adductors': 1, 'calves': 1,
-                'abs': 1,
-            }
-        else:
-            # Split (Upper/Lower/PPL): اسمح بـ 2 للعضلات الكبيرة
-            MAX_PER_CAT = {
-                'chest': 2, 'back': 2, 'shoulders': 2,
-                'biceps': 1, 'triceps': 1, 'forearms': 1,
-                'quads': 2, 'hamstrings': 2, 'glutes': 2, 'adductors': 1, 'calves': 1,
-                'abs': 1,
-            }
+        # حد لكل عضلة محددة (اسمح 1 لكل عضلة، فمثلاً Lower يقدر يجيب 1 quad + 1 hamstring)
+        MAX_PER_CAT = {
+            'chest': 1, 'back': 1, 'shoulders': 1,
+            'biceps': 1, 'triceps': 1, 'forearms': 1,
+            'quads': 1, 'hamstrings': 1, 'glutes': 1, 'adductors': 1, 'calves': 1,
+            'abs': 1,
+        }
         DEFAULT_MAX = 1
 
         def get_cat(ex):
@@ -371,15 +361,7 @@ class GeneratorService:
             current = cat_count.get(cat, 0)
             pattern = getattr(ex, 'movement_pattern', '') or ''
 
-            # في Split — امنع تكرار hamstrings/quads في نفس اليوم
-            skip = False
-            if not is_full_body and cat in ('quads', 'hamstrings', 'glutes'):
-                # احسب كم leg exercise موجود
-                leg_count = sum(cat_count.get(k, 0) for k in ('quads', 'hamstrings', 'glutes'))
-                if leg_count >= 2:
-                    skip = True
-
-            if not skip and current < limit and pattern not in seen_patterns:
+            if current < limit and pattern not in seen_patterns:
                 balanced.append(ex)
                 cat_count[cat] = current + 1
                 if pattern:

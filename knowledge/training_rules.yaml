@@ -119,9 +119,9 @@ sets:
 
     minimum: 2
 
-    recommended: 4
+    recommended: 5
 
-    maximum: 4
+    maximum: 5
 
 # ==========================================================
 # REP RANGES

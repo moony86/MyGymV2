@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from src.apis.deps import get_db
-from src.domain.profile_context import get_current_profile_id
 from src.infrastructure.db.models import (
     ExerciseTable,
     TrainingProfileTable,
@@ -689,11 +688,9 @@ def delete_alternative(
 def generate_plan(
     template_id: Optional[str] = None,
     db=Depends(get_db),
-    profile_id: str = Depends(get_current_profile_id),
 ):
     profile = (
         db.query(TrainingProfileTable)
-        .filter(TrainingProfileTable.id == profile_id)
         .first()
     )
 
@@ -731,11 +728,9 @@ def generate_plan(
 def evaluate_program(
     program_group_id: str,
     db=Depends(get_db),
-    profile_id: str = Depends(get_current_profile_id),
 ):
     profile = (
         db.query(TrainingProfileTable)
-        .filter(TrainingProfileTable.id == profile_id)
         .first()
     )
 
@@ -757,12 +752,9 @@ def evaluate_program(
 def evaluate_single_plan(
     plan_id: str,
     db=Depends(get_db),
-    profile_id: str = Depends(get_current_profile_id),
 ):
     """تقييم خطة واحدة — يعمل على أي خطة موجودة بدون feature flag."""
-    profile = db.query(TrainingProfileTable).filter(
-        TrainingProfileTable.id == profile_id
-    ).first()
+    profile = db.query(TrainingProfileTable).first()
     if not profile:
         raise HTTPException(status_code=400, detail="أكمل البروفايل أولاً")
 
