@@ -89,13 +89,28 @@
                     </select>
                 </section>
 
-                <!-- قائمة المجموعات (بطاقات) -->
-                <div id="dynamic-sets-section" style="display: none; margin-top: 16px;">
-                    <div id="dynamic-sets-body" class="sets-list"></div>
+                <!-- جدول الجلسات الديناميكي -->
+                <div id="dynamic-sets-section" style="display: none; margin-top: 20px;">
+                    <div class="sets-table-wrapper">
+                        <table class="sets-table" dir="rtl">
+                            <thead>
+                                <tr>
+                                    <th>الجلسة</th>
+                                    <th>الوزن (كجم)</th>
+                                    <th>العدات</th>
+                                    <th style="width: 35%;">مستوى الإجهاد</th>
+                                    <th>إجراء</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dynamic-sets-body">
+                                <!-- الأسطر ستتولد هنا تلقائياً -->
+                            </tbody>
+                        </table>
+                    </div>
 
-                    <div class="workout-actions">
-                        <button class="btn-secondary" onclick="addNewSetRow()">➕ إضافة مجموعة</button>
-                        <button class="btn-primary" id="lock-exercise-btn" style="background: var(--success);" onclick="saveWholeExercise(this)">🔒 حفظ</button>
+                    <div class="table-actions-row" style="margin-top: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <button class="btn-secondary" onclick="addNewSetRow()">➕ إضافة جلسة جديدة</button>
+                        <button class="btn-primary" id="lock-exercise-btn" style="background: #059669;" onclick="saveWholeExercise(this)">🔒 حفظ وقفل الجهاز</button>
                     </div>
                 </div>
             </section>
@@ -372,37 +387,25 @@
         }
 
         function addNewSetRow(setNum = null) {
-            const list = document.getElementById('dynamic-sets-body');
-            const num = setNum || (list.children.length + 1);
+            const tbody = document.getElementById('dynamic-sets-body');
+            const num = setNum || (tbody.children.length + 1);
 
-            const card = document.createElement('div');
-            card.className = 'set-card';
-            card.innerHTML = `
-                <div class="set-card-header">
-                    <span class="set-card-number">مجموعة ${num}</span>
-                    <button type="button" class="set-card-delete" onclick="this.closest('.set-card').remove()" aria-label="حذف">✕</button>
-                </div>
-                <div class="set-card-fields">
-                    <div class="set-field">
-                        <label class="set-field-label">الوزن (كجم)</label>
-                        <input type="number" step="0.5" class="set-weight" placeholder="0" inputmode="decimal">
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${num}</strong></td>
+                <td><input type="number" step="0.5" class="set-weight" placeholder="0"></td>
+                <td><input type="number" class="set-reps" placeholder="0"></td>
+                <td>
+                    <div class="effort-selector">
+                        <button type="button" class="effort-btn" onclick="setEffort(this, 'EASY')">🟢</button>
+                        <button type="button" class="effort-btn active-mid" onclick="setEffort(this, 'MID')">🟡</button>
+                        <button type="button" class="effort-btn" onclick="setEffort(this, 'HARD')">🔴</button>
+                        <input type="hidden" class="set-effort-val" value="MID">
                     </div>
-                    <div class="set-field">
-                        <label class="set-field-label">العدات</label>
-                        <input type="number" class="set-reps" placeholder="0" inputmode="numeric">
-                    </div>
-                    <div class="set-field set-field-effort">
-                        <label class="set-field-label">مستوى الإجهاد</label>
-                        <div class="effort-selector">
-                            <button type="button" class="effort-btn" onclick="setEffort(this, 'EASY')" aria-label="سهل">🟢</button>
-                            <button type="button" class="effort-btn active-mid" onclick="setEffort(this, 'MID')" aria-label="متوسط">🟡</button>
-                            <button type="button" class="effort-btn" onclick="setEffort(this, 'HARD')" aria-label="صعب">🔴</button>
-                            <input type="hidden" class="set-effort-val" value="MID">
-                        </div>
-                    </div>
-                </div>
+                </td>
+                <td><button type="button" class="btn-danger btn-small" onclick="this.closest('tr').remove()">✕</button></td>
             `;
-            list.appendChild(card);
+            tbody.appendChild(tr);
         }
 
         function setEffort(btn, level) {
@@ -445,7 +448,7 @@
         async function saveWholeExercise(btn) {
             if (!currentExerciseId) { alert('اختر تمريناً أولاً'); return; }
 
-            const rows = document.querySelectorAll('#dynamic-sets-body .set-card');
+            const rows = document.querySelectorAll('#dynamic-sets-body tr');
             const setsData = [];
 
             rows.forEach((row, idx) => {
