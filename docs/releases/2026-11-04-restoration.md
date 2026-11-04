@@ -17,4 +17,6 @@ The existing training database is retained in place. Authentication recovery use
 
 Verification includes the functional suite, separate authentication suite, mobile browser journeys and direct database consistency checks. These verify software behavior, not fitness outcomes. Operational evidence and private backup paths are recorded outside the public repository.
 
+The recovered source passed 308 functional tests and 15 security tests in a clean Python 3.13 environment. The same suites also passed on GitHub Actions. A fresh database upgrade reached migration `20261027_coaching`. GitHub Actions repeats installation, dependency validation, fresh migration, and both suites on future pushes and pull requests.
+
 Remaining limits: the exercise video library is small, coaching depends on truthful logging, actual technique is not observed, and a consenting human usability/fitness study has not been completed.
