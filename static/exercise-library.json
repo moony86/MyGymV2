@@ -1,0 +1,367 @@
+[
+  {
+    "key": "lateral_raise",
+    "title": "Dumbbell Lateral Raise",
+    "title_ar": "رفع جانبي بالدمبل",
+    "bindings": [
+      {
+        "name": "Lateral Raise",
+        "equipment": "dumbbell"
+      },
+      {
+        "name": "Dumbbell Lateral Raise",
+        "equipment": "dumbbell"
+      }
+    ],
+    "images": [
+      {
+        "title": "Dumbbell Lateral Raise",
+        "local_url": "/static/exercise-images/177.png",
+        "source_page": "https://wger.de/api/v2/exerciseinfo/348/",
+        "source_file": "https://wger.de/media/exercise-images/148/lateral-dumbbell-raises-large-2.png",
+        "author": "Everkinetic",
+        "license": "CC-BY-SA 3",
+        "license_url": "https://creativecommons.org/licenses/by-sa/3.0/deed.en",
+        "changes": "Original file; no edits",
+        "sha256": "acdcbbc93c7242d837f771d3422e26ad627da8faf2a3b133416fe886f8cc3cce",
+        "source_sha256": "acdcbbc93c7242d837f771d3422e26ad627da8faf2a3b133416fe886f8cc3cce",
+        "review_status": "visually_checked_for_variant_match"
+      },
+      {
+        "title": "Dumbbell Lateral Raise",
+        "local_url": "/static/exercise-images/178.png",
+        "source_page": "https://wger.de/api/v2/exerciseinfo/348/",
+        "source_file": "https://wger.de/media/exercise-images/148/lateral-dumbbell-raises-large-1.png",
+        "author": "Everkinetic",
+        "license": "CC-BY-SA 3",
+        "license_url": "https://creativecommons.org/licenses/by-sa/3.0/deed.en",
+        "changes": "Original file; no edits",
+        "sha256": "7c31318be41a8ed82d6390d52eebda7ca280c18bb7727cf27f04c35c33eb3cdf",
+        "source_sha256": "7c31318be41a8ed82d6390d52eebda7ca280c18bb7727cf27f04c35c33eb3cdf",
+        "review_status": "visually_checked_for_variant_match"
+      }
+    ],
+    "video": {
+      "title": "Dumbbell Lateral Raise",
+      "local_url": "/static/exercise-media/wger-6.mp4",
+      "source_page": "https://wger.de/api/v2/exerciseinfo/348/",
+      "source_file": "https://wger.de/media/exercise-video/348/de69928a-8a35-4096-821c-1f46de5e0e03.MOV",
+      "author": "Goulart",
+      "license": "CC-BY-SA 4",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0/deed.en",
+      "changes": "Converted to H.264 at 640px and 24fps; audio removed. Motion retained.",
+      "sha256": "fa144f0e8a432b7138f83dc781fca2797c0e0dceb6e48412d0a81b624992becd",
+      "source_sha256": "41c47c5efd245d0dfbcd25e4c1e6a4f46f2093281871df3503278ea9e5444d7f",
+      "review_status": "visually_checked_for_variant_match"
+    }
+  },
+  {
+    "key": "machine_shoulder_press",
+    "title": "Machine Shoulder Press",
+    "title_ar": "ضغط الكتف على الجهاز",
+    "bindings": [
+      {
+        "name": "Shoulder Press (Machine)",
+        "equipment": "machine"
+      },
+      {
+        "name": "Machine Shoulder Press",
+        "equipment": "machine"
+      }
+    ],
+    "images": [
+      {
+        "title": "Machine Shoulder Press",
+        "local_url": "/static/exercise-images/195.png",
+        "source_page": "https://wger.de/api/v2/exerciseinfo/543/",
+        "source_file": "https://wger.de/media/exercise-images/53/Shoulder-press-machine-2.png",
+        "author": "wger.de",
+        "license": "CC-BY-SA 3",
+        "license_url": "https://creativecommons.org/licenses/by-sa/3.0/deed.en",
+        "changes": "Original file; no edits",
+        "sha256": "12505b3c44de512f1c4fdde210fdad8f8202f5438c63f538dc7677212ab863e4",
+        "source_sha256": "12505b3c44de512f1c4fdde210fdad8f8202f5438c63f538dc7677212ab863e4",
+        "review_status": "visually_checked_for_variant_match"
+      },
+      {
+        "title": "Machine Shoulder Press",
+        "local_url": "/static/exercise-images/196.png",
+        "source_page": "https://wger.de/api/v2/exerciseinfo/543/",
+        "source_file": "https://wger.de/media/exercise-images/53/Shoulder-press-machine-1.png",
+        "author": "wger.de",
+        "license": "CC-BY-SA 3",
+        "license_url": "https://creativecommons.org/licenses/by-sa/3.0/deed.en",
+        "changes": "Original file; no edits",
+        "sha256": "f66a569ffc518edc1028f9fecf886e0ed4f4a6af1965b1939df3aca68cd90285",
+        "source_sha256": "f66a569ffc518edc1028f9fecf886e0ed4f4a6af1965b1939df3aca68cd90285",
+        "review_status": "visually_checked_for_variant_match"
+      }
+    ],
+    "video": {
+      "title": "Machine Shoulder Press",
+      "local_url": "/static/exercise-media/wger-11.mp4",
+      "source_page": "https://wger.de/api/v2/exerciseinfo/543/",
+      "source_file": "https://wger.de/media/exercise-video/543/dbfd396b-1aab-4a64-a50b-2c31ff0a2cf7.MOV",
+      "author": "Goulart",
+      "license": "CC-BY-SA 4",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0/deed.en",
+      "changes": "Converted to H.264 at 640px and 24fps; audio removed. Motion retained.",
+      "sha256": "9e4b7b6f6a22f4257e10e8bfe26916ffe40fef9399e7c732751050f1f1ac2756",
+      "source_sha256": "1b3f5619a871ea77871a17b777c606e793f1d728a8253bad45c13f3877e999d6",
+      "review_status": "visually_checked_for_variant_match"
+    }
+  },
+  {
+    "key": "lying_leg_curl",
+    "title": "Lying Leg Curl",
+    "title_ar": "ثني الرجل مستلقيًا",
+    "bindings": [
+      {
+        "name": "Lying Leg Curl",
+        "equipment": "machine"
+      }
+    ],
+    "images": [
+      {
+        "title": "Lying Leg Curl",
+        "local_url": "/static/exercise-images/179.png",
+        "source_page": "https://wger.de/api/v2/exerciseinfo/365/",
+        "source_file": "https://wger.de/media/exercise-images/154/lying-leg-curl-machine-large-1.png",
+        "author": "Everkinetic",
+        "license": "CC-BY-SA 3",
+        "license_url": "https://creativecommons.org/licenses/by-sa/3.0/deed.en",
+        "changes": "Original file; no edits",
+        "sha256": "e8da278d94c2c7fe5feed8aab3d4666aac55f699f19bad38c086cea2208c98ad",
+        "source_sha256": "e8da278d94c2c7fe5feed8aab3d4666aac55f699f19bad38c086cea2208c98ad",
+        "review_status": "visually_checked_for_variant_match"
+      },
+      {
+        "title": "Lying Leg Curl",
+        "local_url": "/static/exercise-images/180.png",
+        "source_page": "https://wger.de/api/v2/exerciseinfo/365/",
+        "source_file": "https://wger.de/media/exercise-images/154/lying-leg-curl-machine-large-2.png",
+        "author": "Everkinetic",
+        "license": "CC-BY-SA 3",
+        "license_url": "https://creativecommons.org/licenses/by-sa/3.0/deed.en",
+        "changes": "Original file; no edits",
+        "sha256": "c9476f7baeaa61ea503abd07219be240eaa7cd443040447da004485d7f0dc1e4",
+        "source_sha256": "c9476f7baeaa61ea503abd07219be240eaa7cd443040447da004485d7f0dc1e4",
+        "review_status": "visually_checked_for_variant_match"
+      }
+    ],
+    "video": {
+      "title": "Lying Leg Curl",
+      "local_url": "/static/exercise-media/wger-35.mp4",
+      "source_page": "https://wger.de/api/v2/exerciseinfo/365/",
+      "source_file": "https://wger.de/media/exercise-video/365/becaf013-5044-40d0-bae9-7ed60c973737.MOV",
+      "author": "Goulart",
+      "license": "CC-BY-SA 4",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0/deed.en",
+      "changes": "Converted to H.264 at 640px and 24fps; audio removed. Motion retained.",
+      "sha256": "d5abf5438aeb0659f915631dfd41a121dd3856e9a7240ae25016b294d1556413",
+      "source_sha256": "77d70320a6d87af02532379039874eaf805d569462cc540060b04da915fcecb3",
+      "review_status": "visually_checked_for_variant_match"
+    }
+  },
+  {
+    "key": "leg_press",
+    "title": "Leg Press",
+    "title_ar": "ضغط الرجلين",
+    "bindings": [
+      {
+        "name": "Leg Press",
+        "equipment": "machine"
+      }
+    ],
+    "images": [],
+    "video": {
+      "title": "Leg Press",
+      "local_url": "/static/exercise-media/wger-44.mp4",
+      "source_page": "https://wger.de/api/v2/exerciseinfo/371/",
+      "source_file": "https://wger.de/media/exercise-video/371/6aae16b4-01b9-4eb4-935c-3250f84d2c59.MOV",
+      "author": "Goulart",
+      "license": "CC-BY-SA 4",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0/deed.en",
+      "changes": "Converted to H.264 at 640px and 24fps; audio removed. Motion retained.",
+      "sha256": "5a71413219b370e43e6f968f6b563a437190bb20d9d77498ecc4e4b897e3b4b9",
+      "source_sha256": "a92f5677ce005b10385668c88e5cce77c57658b63f8808b8684be0a5abeaa2ef",
+      "review_status": "visually_checked_for_variant_match"
+    }
+  },
+  {
+    "key": "t_bar_row",
+    "title": "T-Bar Row",
+    "title_ar": "سحب تي بار دون دعامة صدر",
+    "bindings": [
+      {
+        "name": "T-Bar Row",
+        "equipment": "barbell"
+      },
+      {
+        "name": "T-Bar Row",
+        "equipment": "plate-loaded"
+      }
+    ],
+    "images": [
+      {
+        "title": "T-Bar Row",
+        "local_url": "/static/exercise-images/77.png",
+        "source_page": "https://wger.de/api/v2/exerciseinfo/513/",
+        "source_file": "https://wger.de/media/exercise-images/106/T-bar-row-1.png",
+        "author": "Everkinetic",
+        "license": "CC-BY-SA 3",
+        "license_url": "https://creativecommons.org/licenses/by-sa/3.0/deed.en",
+        "changes": "Original file; no edits",
+        "sha256": "480b7c5b2374d10dcf41eb6ad173e77c5feccc825b85b24ce8a388b0e0377111",
+        "source_sha256": "480b7c5b2374d10dcf41eb6ad173e77c5feccc825b85b24ce8a388b0e0377111",
+        "review_status": "visually_checked_for_variant_match"
+      },
+      {
+        "title": "T-Bar Row",
+        "local_url": "/static/exercise-images/79.png",
+        "source_page": "https://wger.de/api/v2/exerciseinfo/513/",
+        "source_file": "https://wger.de/media/exercise-images/106/T-bar-row-2.png",
+        "author": "Everkinetic",
+        "license": "CC-BY-SA 3",
+        "license_url": "https://creativecommons.org/licenses/by-sa/3.0/deed.en",
+        "changes": "Original file; no edits",
+        "sha256": "02d3b4f083396694b6b8ee0bac486fdde646c073358771a3b4381b4046691560",
+        "source_sha256": "02d3b4f083396694b6b8ee0bac486fdde646c073358771a3b4381b4046691560",
+        "review_status": "visually_checked_for_variant_match"
+      }
+    ],
+    "video": null
+  },
+  {
+    "key": "dumbbell_overhead_press",
+    "title": "Dumbbell Overhead Press",
+    "title_ar": "ضغط الكتف بالدمبل",
+    "bindings": [
+      {
+        "name": "Dumbbell Overhead Press",
+        "equipment": "dumbbell"
+      }
+    ],
+    "images": [
+      {
+        "title": "Dumbbell Overhead Press",
+        "local_url": "/static/exercise-images/173.png",
+        "source_page": "https://wger.de/api/v2/exerciseinfo/567/",
+        "source_file": "https://wger.de/media/exercise-images/123/dumbbell-shoulder-press-large-1.png",
+        "author": "Everkinetic",
+        "license": "CC-BY-SA 3",
+        "license_url": "https://creativecommons.org/licenses/by-sa/3.0/deed.en",
+        "changes": "Original file; no edits",
+        "sha256": "d3fbf6690df84e743ae090164f133e84c5595a54a892d80532e0af4cb543f670",
+        "source_sha256": "d3fbf6690df84e743ae090164f133e84c5595a54a892d80532e0af4cb543f670",
+        "review_status": "visually_checked_for_variant_match"
+      },
+      {
+        "title": "Dumbbell Overhead Press",
+        "local_url": "/static/exercise-images/174.png",
+        "source_page": "https://wger.de/api/v2/exerciseinfo/567/",
+        "source_file": "https://wger.de/media/exercise-images/123/dumbbell-shoulder-press-large-2.png",
+        "author": "Everkinetic",
+        "license": "CC-BY-SA 3",
+        "license_url": "https://creativecommons.org/licenses/by-sa/3.0/deed.en",
+        "changes": "Original file; no edits",
+        "sha256": "42aa5e8286d57566ac5e5239013deddb48201c64656f13b4d26b91f6e33182ef",
+        "source_sha256": "42aa5e8286d57566ac5e5239013deddb48201c64656f13b4d26b91f6e33182ef",
+        "review_status": "visually_checked_for_variant_match"
+      }
+    ],
+    "video": null
+  },
+  {
+    "key": "seated_leg_curl",
+    "title": "Seated Leg Curl",
+    "title_ar": "ثني الرجل جالسًا",
+    "bindings": [
+      {
+        "name": "Seated Leg Curl",
+        "equipment": "machine"
+      }
+    ],
+    "images": [
+      {
+        "title": "Seated Leg Curl",
+        "local_url": "/static/exercise-images/181.png",
+        "source_page": "https://wger.de/api/v2/exerciseinfo/366/",
+        "source_file": "https://wger.de/media/exercise-images/117/seated-leg-curl-large-1.png",
+        "author": "Everkinetic",
+        "license": "CC-BY-SA 3",
+        "license_url": "https://creativecommons.org/licenses/by-sa/3.0/deed.en",
+        "changes": "Original file; no edits",
+        "sha256": "d13ff4f8aa04ab62b8ed1b42a9493307bd4077eaf4f84da57d4cc7dbe28ac372",
+        "source_sha256": "d13ff4f8aa04ab62b8ed1b42a9493307bd4077eaf4f84da57d4cc7dbe28ac372",
+        "review_status": "visually_checked_for_variant_match"
+      },
+      {
+        "title": "Seated Leg Curl",
+        "local_url": "/static/exercise-images/182.png",
+        "source_page": "https://wger.de/api/v2/exerciseinfo/366/",
+        "source_file": "https://wger.de/media/exercise-images/117/seated-leg-curl-large-2.png",
+        "author": "Everkinetic",
+        "license": "CC-BY-SA 3",
+        "license_url": "https://creativecommons.org/licenses/by-sa/3.0/deed.en",
+        "changes": "Original file; no edits",
+        "sha256": "9985758b68e0d1b8eddbe5b5e5f3ede345005b21eca337e74245b13bd02c8593",
+        "source_sha256": "9985758b68e0d1b8eddbe5b5e5f3ede345005b21eca337e74245b13bd02c8593",
+        "review_status": "visually_checked_for_variant_match"
+      }
+    ],
+    "video": null
+  },
+  {
+    "key": "barbell_bench_press",
+    "title": "Barbell Bench Press",
+    "title_ar": "بنش مستوٍ بالبار",
+    "bindings": [
+      {
+        "name": "Bench Press (Barbell)",
+        "equipment": "barbell"
+      },
+      {
+        "name": "Barbell Bench Press",
+        "equipment": "barbell"
+      }
+    ],
+    "images": [],
+    "video": {
+      "title": "Barbell Bench Press",
+      "local_url": "/static/exercise-media/21.mp4",
+      "source_page": "https://wger.de/api/v2/exerciseinfo/73/",
+      "source_video": "https://wger.de/media/exercise-video/73/2bdb390c-312c-4497-a722-5eed2c823e5a.MOV",
+      "author": "Goulart",
+      "license": "CC-BY-SA 4",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0/deed.en",
+      "changes": "Original file; no edits",
+      "sha256": "f7ef457d364ed24fc1dff86a4c40f9801f42213300e9904b442d96430b869ecc",
+      "review_status": "previously_visually_checked_for_variant_match"
+    }
+  },
+  {
+    "key": "dumbbell_bench_press",
+    "title": "Dumbbell Bench Press",
+    "title_ar": "بنش مستوٍ بالدمبل",
+    "bindings": [
+      {
+        "name": "Dumbbell Bench Press",
+        "equipment": "dumbbell"
+      }
+    ],
+    "images": [],
+    "video": {
+      "title": "Dumbbell Bench Press",
+      "local_url": "/static/exercise-media/17.mp4",
+      "source_page": "https://wger.de/api/v2/exerciseinfo/75/",
+      "source_video": "https://wger.de/media/exercise-video/75/080c799b-8afd-4130-8d72-9cef0cd79f54.MOV",
+      "author": "Goulart",
+      "license": "CC-BY-SA 4",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0/deed.en",
+      "changes": "Original file; no edits",
+      "sha256": "d96fa783d10b476965e926a2c88f4b6d69da5f9e91cd7656fbafadb001981afa",
+      "review_status": "previously_visually_checked_for_variant_match"
+    }
+  }
+]

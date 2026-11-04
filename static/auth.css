@@ -7,3 +7,5 @@
 .container>header>.profile-controls{flex-basis:100%;min-width:0;flex-wrap:wrap}
 .profile-controls select{min-width:0;max-width:100%}
 .profile-controls button{max-width:100%}
+
+.auth-card .remember-device{display:block;font-size:15px}.auth-card .remember-device input{display:inline-block;width:auto;min-height:0;margin-inline-end:8px}.remember-device small{display:block;margin:5px 0;color:#56706c}

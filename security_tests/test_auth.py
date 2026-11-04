@@ -55,7 +55,7 @@ def test_password_is_hashed_and_cookie_is_protected():
     assert store.verify(PASSWORD,row['password_hash'])
     cookies=setup_response.headers.get_list('set-cookie')
     session_cookie=next(c for c in cookies if c.startswith('mygym_session='))
-    assert 'HttpOnly' in session_cookie and 'Secure' in session_cookie and 'SameSite=strict' in session_cookie
+    assert 'HttpOnly' in session_cookie and 'Secure' in session_cookie and 'SameSite=lax' in session_cookie
 
 def test_profile_spoofing_rejected():
     c,profile,_=member()
@@ -89,6 +89,81 @@ def test_logout_revokes_session():
     assert c.post('/api/auth/logout').status_code==200
     assert store.session(old) is None
     assert c.get('/api/workouts/history').status_code==401
+
+
+def test_remember_device_survives_a_new_client_and_skips_login_page():
+    first,profile,username=member()
+    r=first.post('/api/auth/login',json={'username':username,'password':PASSWORD,'remember':True})
+    assert r.status_code==200
+    session_cookie=next(x for x in r.headers.get_list('set-cookie') if x.startswith('mygym_session='))
+    assert 'Max-Age=7776000' in session_cookie and 'HttpOnly' in session_cookie and 'Secure' in session_cookie
+    reopened=TestClient(app,base_url=BASE)
+    reopened.cookies.update(first.cookies)
+    assert reopened.get('/api/auth/me').json()['profile_id']==profile
+    assert reopened.get('/login',follow_redirects=False).headers['location']=='/'
+
+
+def test_remembered_session_renews_without_changing_csrf_or_identity():
+    client,profile,username=member()
+    client.post('/api/auth/login',json={'username':username,'password':PASSWORD,'remember':True})
+    token=client.cookies.get('mygym_session');csrf=client.cookies.get('mygym_csrf')
+    digest=hashlib.sha256(token.encode()).hexdigest()
+    with store.connect() as db:
+        db.execute('UPDATE sessions SET expires=? WHERE token_hash=?',(time.time()+86400,digest))
+    response=client.get('/api/auth/me')
+    assert response.json()['profile_id']==profile
+    assert client.cookies.get('mygym_session')==token and client.cookies.get('mygym_csrf')==csrf
+    assert store.session(token)['expires']>time.time()+89*86400
+    assert any(x.startswith('mygym_session=') for x in response.headers.get_list('set-cookie'))
+    assert not client.get('/api/auth/me').headers.get_list('set-cookie')
+
+
+@pytest.mark.parametrize('expired',['idle','absolute'])
+def test_remember_does_not_revive_expired_sessions(expired):
+    client,_,username=member()
+    client.post('/api/auth/login',json={'username':username,'password':PASSWORD,'remember':True})
+    digest=hashlib.sha256(client.cookies.get('mygym_session').encode()).hexdigest()
+    with store.connect() as db:
+        if expired=='idle':db.execute('UPDATE sessions SET expires=? WHERE token_hash=?',(time.time()-1,digest))
+        else:db.execute('UPDATE remembered_sessions SET absolute_expires=? WHERE token_hash=?',(time.time()-1,digest))
+    response=client.get('/api/auth/me')
+    assert response.status_code==401 and not response.headers.get_list('set-cookie')
+
+
+def test_renewal_is_bounded_and_logout_cannot_reissue_a_cookie():
+    client,_,username=member()
+    client.post('/api/auth/login',json={'username':username,'password':PASSWORD,'remember':True})
+    token=client.cookies.get('mygym_session');digest=hashlib.sha256(token.encode()).hexdigest()
+    ceiling=time.time()+2*86400
+    with store.connect() as db:
+        db.execute('UPDATE sessions SET expires=? WHERE token_hash=?',(time.time()+86400,digest))
+        db.execute('UPDATE remembered_sessions SET absolute_expires=? WHERE token_hash=?',(ceiling,digest))
+    client.get('/api/auth/me')
+    assert store.session(token)['expires']<=ceiling
+    client.headers['X-CSRF-Token']=client.cookies.get('mygym_csrf')
+    response=client.post('/api/auth/logout')
+    assert response.status_code==200 and store.session(token) is None
+    assert all('Max-Age=0' in x for x in response.headers.get_list('set-cookie'))
+
+
+def test_password_change_revokes_a_remembered_device():
+    client,_,username=member()
+    client.post('/api/auth/login',json={'username':username,'password':PASSWORD,'remember':True})
+    token=client.cookies.get('mygym_session')
+    client.headers['X-CSRF-Token']=client.cookies.get('mygym_csrf')
+    r=client.post('/api/auth/password',json={'old_password':PASSWORD,'password':'new-audit-password-456'})
+    assert r.status_code==200 and store.session(token) is None
+    assert store.session(client.cookies.get('mygym_session'))['absolute_expires'] is not None
+
+
+def test_existing_signed_in_device_can_be_remembered_without_password():
+    client,profile,username=member()
+    old=client.cookies.get('mygym_session')
+    assert client.get('/api/auth/me').json()['remembered_device'] is False
+    assert client.post('/api/auth/remember-device',headers={'X-CSRF-Token':''}).status_code==403
+    response=client.post('/api/auth/remember-device')
+    assert response.status_code==200 and store.session(old) is None
+    assert client.get('/api/auth/me').json()==dict(profile_id=profile,username=username,is_admin=0,remembered_device=True)
 
 def test_password_reset_revokes_existing_sessions():
     c,profile,username=member()

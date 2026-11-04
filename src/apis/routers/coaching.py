@@ -69,9 +69,9 @@ def exercise_guide(exercise_id:str,db=Depends(get_db),owner=Depends(get_current_
     if rows:
         s,session=rows[0]
         if s.weight is not None and __import__('decimal').Decimal(str(s.weight)).is_finite() and s.reps and s.reps>0 and s.weight>=0:last=dict(weight=str(s.weight),reps=s.reps,date=service.aware(session.started_at).isoformat(),stale=(utc_now()-service.aware(session.started_at)).days>=14)
-    path=Path(__file__).resolve().parents[3]/'static'/'exercise-media.json'
-    media=json.loads(path.read_text()).get(exercise.knowledge_variant_id) if path.exists() else None
-    return dict(id=exercise.id,name=exercise.name,movement=movement,equipment=equipment,last=last,media=media)
+    from src.services.exercise_media import for_exercise
+    media,images=for_exercise(exercise)
+    return dict(id=exercise.id,name=exercise.name,movement=movement,equipment=equipment,last=last,media=media,images=images)
 
 @router.post('/feedback')
 def feedback(data:FeedbackInput,db=Depends(get_db),owner=Depends(get_current_profile_id)):

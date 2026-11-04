@@ -18,7 +18,7 @@
  row.querySelector('.row-save-state').textContent=value.saved?'محفوظة على السيرفر':value.payload?'طلب يحتاج تأكيدًا — أعد محاولة الحفظ دون تغيير القيم':'';
  const remove=row.querySelector('button');remove.disabled=!!lock;remove.onclick=()=>{row.remove();persist();};
  return row;}
- window.setupDynamicSetsTable=(count=3)=>{const body=document.getElementById('dynamic-sets-body');body.replaceChildren();document.getElementById('dynamic-sets-section').style.display='block';const draft=read();const values=Array.isArray(draft)&&draft.length?draft:Array.from({length:count},()=>({}));values.forEach((value,i)=>body.appendChild(createRow(value,i+1)));if(draft)status('استُعيدت المسودة. المجموعات المؤكدة لن تُرسل مرة أخرى.');else status('RPE: صعوبة المجموعة من 1 إلى 10. RIR: التكرارات التي تعتقد أنها بقيت، وصفر يعني لا تكرارات متبقية. اترك غير المعروف فارغًا.');};
+ window.setupDynamicSetsTable=(count=3)=>{const body=document.getElementById('dynamic-sets-body');body.replaceChildren();document.getElementById('dynamic-sets-section').style.display='block';const draft=read();const values=Array.isArray(draft)&&draft.length?draft:Array.from({length:count},()=>({}));values.forEach((value,i)=>body.appendChild(createRow(value,i+1)));if(draft)status('استُعيدت المسودة. المجموعات المؤكدة لن تُرسل مرة أخرى.');else status('أدخل الوزن والعدات ثم احفظ. المجهود اختياري.');};
  window.addNewSetRow=()=>{const body=document.getElementById('dynamic-sets-body');body.appendChild(createRow({},body.children.length+1));persist();};
  window.saveWholeExercise=async btn=>{
  if(saving)return;if(!currentExerciseId){status('اختر تمرينًا أولًا.',true);return;}

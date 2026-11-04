@@ -2,6 +2,8 @@ import hmac
 from urllib.parse import urlsplit
 from starlette.responses import JSONResponse, RedirectResponse
 from src.security import auth_store as store
+from src.security.session_cookies import set_session_cookies
+import time
 
 PUBLIC = {'/login','/api/auth/status','/api/auth/login','/api/auth/setup'}
 SAFE = {'GET','HEAD','OPTIONS'}
@@ -44,5 +46,8 @@ def install(app):
         request.scope['headers']=headers
         request.state.auth=account
         response=await call_next(request)
+        expiry=store.renew_remembered(request.cookies.get('mygym_session'),account)
+        if expiry is not None:
+            set_session_cookies(response,request.cookies.get('mygym_session'),account['csrf'],expiry-time.time())
         response.headers['Cache-Control']='no-store'
         return response
