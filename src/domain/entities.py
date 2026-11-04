@@ -78,6 +78,7 @@ class Set(BaseModel):
     weight: Decimal  # بالكيلوجرام كـ Decimal
     reps: int
     rpe: Optional[float] = None
+    rir: Optional[int] = None
     set_type: SetType = SetType.WORKING
 
     @field_validator('weight')
@@ -93,6 +94,13 @@ class Set(BaseModel):
         if v <= 0:
             raise ValueError("Reps must be greater than 0.")
         return v
+
+    @field_validator('rir')
+    @classmethod
+    def validate_rir(cls, value):
+        if value is not None and not 0 <= value <= 10:
+            raise ValueError("RIR must be between 0 and 10.")
+        return value
 
     @field_validator('rpe')
     @classmethod

@@ -1,9 +1,11 @@
 /**
  * =========================================================================
- * 🏋️ MYGYM CORE APP - ARCHITECTURE V2.3 (MONOLITHIC PRODUCTION)
+ * 🏋️ MYGYM CORE APP - ARCHITECTURE V2.4 (MONOLITHIC PRODUCTION)
  * =========================================================================
  * V2.3: إضافة دعم استئناف الجلسة المخططة بعد تحديث الصفحة / إغلاق التطبيق
  * دون فقدان تقدم المستخدم (لا يُعاد إنشاء جلسة جديدة إذا وُجدت جلسة نشطة).
+ * V2.4: مصدر الحقيقة للتمارين الإضافية أصبح GET /workouts/{id}/exercises
+ * (السيرفر)، بدل اشتقاقها محليًا من state.workout.sets.
  */
 
 // 1️⃣ STATE (مستودع البيانات المركزي النظيف والمدمج)
@@ -14,18 +16,39 @@ const state = {
 
 let timerInterval = null;
 
+function createOperationId() {
+    if (window.crypto && window.crypto.randomUUID) {
+        return window.crypto.randomUUID();
+    }
+    return `op-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 // 2️⃣ API LAYER (الطبقة الوحيدة المسؤولة عن الـ fetch والاتصال بالشبكة)
 const API = {
     BASE_URL: '/api',
 
     async request(path, options = {}) {
         const url = `${this.BASE_URL}${path}`;
+        const { headers = {}, queueWhenOffline = false, ...fetchOptions } = options;
         const config = {
-            headers: { 'Content-Type': 'application/json', ...options.headers },
-            ...options
+            ...fetchOptions,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Profile-Id': localStorage.getItem('mygym_profile_id') || '00000000-0000-0000-0000-000000000001',
+                ...headers,
+            },
         };
 
-        const res = await fetch(url, config);
+        let res;
+        try {
+            res = await fetch(url, config);
+        } catch (error) {
+            if (queueWhenOffline) {
+                OfflineQueue.enqueue({ path, options: config });
+                return { queued: true };
+            }
+            throw error;
+        }
         if (!res.ok) {
             const error = await res.json().catch(() => ({ detail: res.statusText }));
             throw new Error(error.detail || res.statusText);
@@ -34,9 +57,88 @@ const API = {
     },
 
     async get(path) { return this.request(path, { method: 'GET' }); },
-    async post(path, body) { return this.request(path, { method: 'POST', body: JSON.stringify(body) }); },
+    async post(path, body, queueWhenOffline = false) {
+        return this.request(path, {
+            method: 'POST',
+            body: JSON.stringify(body),
+            queueWhenOffline,
+        });
+    },
     async delete(path) { return this.request(path, { method: 'DELETE' }); }
 };
+
+const OfflineQueue = {
+    STORAGE_KEY: 'mygym_offline_queue_v1',
+    _flushing: false,
+
+    _read() {
+        try {
+            const entries = JSON.parse(localStorage.getItem(this.STORAGE_KEY) || '[]');
+            if (!Array.isArray(entries)) return [];
+            let changed = false;
+            for (const entry of entries) {
+                if (!entry.id) {
+                    entry.id = createOperationId();
+                    changed = true;
+                }
+            }
+            if (changed) localStorage.setItem(this.STORAGE_KEY, JSON.stringify(entries));
+            return entries;
+        } catch (e) {
+            return [];
+        }
+    },
+
+    enqueue(request) {
+        const queue = this._read();
+        const options = { ...request.options, queueWhenOffline: false };
+        options.headers = {
+            ...options.headers,
+            'X-Profile-Id': options.headers?.['X-Profile-Id'] || localStorage.getItem('mygym_profile_id') || '00000000-0000-0000-0000-000000000001',
+        };
+        queue.push({ id: createOperationId(), path: request.path, options });
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(queue));
+        UI.showSnackbar('تم الحفظ محلياً، ستتم المزامنة عند عودة الاتصال', 'info');
+    },
+
+    async flush() {
+        if (this._flushing) return;
+        this._flushing = true;
+        let completed = 0;
+        try {
+            const currentProfile = localStorage.getItem('mygym_profile_id') || '00000000-0000-0000-0000-000000000001';
+            const queue = this._read();
+            if (queue.some(request => !request.options?.headers?.['X-Profile-Id'])) {
+                UI.showSnackbar('توجد عمليات قديمة محفوظة تحتاج مراجعة لتحديد صاحبها؛ لم تُحذف', 'info');
+            }
+            for (const request of queue) {
+                // Never guess the owner of legacy requests or replay another profile's queue.
+                if (request.options?.headers?.['X-Profile-Id'] !== currentProfile) continue;
+                try {
+                    await API.request(request.path, { ...request.options, queueWhenOffline: false });
+                } catch (e) {
+                    break; // Keep the failed request and every unattempted request.
+                }
+                // Re-read so requests queued while awaiting the network are preserved.
+                const remaining = this._read().filter(entry => entry.id !== request.id);
+                localStorage.setItem(this.STORAGE_KEY, JSON.stringify(remaining));
+                completed++;
+            }
+            if (completed) {
+                UI.showSnackbar('تمت مزامنة البيانات المحفوظة محلياً', 'success');
+                if ((localStorage.getItem('mygym_profile_id') || '00000000-0000-0000-0000-000000000001') === currentProfile) {
+                    await SessionManager.restore();
+                    UI.renderWorkoutPage();
+                }
+            }
+        } finally {
+            this._flushing = false;
+        }
+    },
+};
+
+window.addEventListener('online', () => OfflineQueue.flush());
+window.addEventListener('load', () => OfflineQueue.flush());
 
 // 3️⃣ SESSION MANAGER (إدارة دورة حياة الجلسات الرياضية - السيرفر هو مصدر الحقيقة الكامل)
 const SessionManager = {
@@ -76,7 +178,7 @@ const SessionManager = {
 
     async addSet(setData) {
         if (!state.workout || !state.workout.session) return;
-        return await API.post(`/workouts/${state.workout.session.id}/sets`, setData);
+        return await API.post(`/workouts/${state.workout.session.id}/sets`, setData, true);
     },
 
     async finish(buttonEl) {
@@ -112,6 +214,8 @@ const SessionManager = {
 
 // 4️⃣ EXERCISE MANAGER (المسؤول عن معالجة وإدخال المجموعات الذكية)
 const ExerciseManager = {
+    _draftInputHandler: null,   // مرجع لمستمع الحفظ التلقائي (لمنع التراكم)
+
     async loadExercises() {
         try {
             state.exercises = await API.get('/exercises');
@@ -146,33 +250,74 @@ const ExerciseManager = {
         dynamicSection.style.display = 'block';
         tbody.innerHTML = '';
 
-        for (let i = 1; i <= 3; i++) { this.addNewRow(); }
+        // لو فيه مسودة محفوظة محليًا لنفس التمرين بهذه الجلسة، نستعيدها
+        // بدل ما نبدأ بجدول فاضي (حماية من فقدان قيم كُتبت قبل انقطاع/إغلاق).
+        const draftRows = ExerciseDraft.restore(select.value);
+        if (draftRows && draftRows.length > 0) {
+            draftRows.forEach(r => this.addNewRow(r.weight, r.reps, r.operation_id, r.rpe, r.rir));
+            UI.showSnackbar('↩️ تم استرجاع قيم لم تُحفظ من قبل', 'info');
+        } else {
+            for (let i = 1; i <= 3; i++) { this.addNewRow(); }
+        }
+
+        this.attachDraftAutosave();
     },
 
-    addNewRow() {
+    // يربط أي تغيير بأي خانة وزن/عدات بحفظ فوري بالـ localStorage
+    attachDraftAutosave() {
+        const tbody = document.getElementById('dynamic-sets-body');
+        const select = document.getElementById('exercise-select');
+        if (!tbody || !select.value) return;
+
+        // إزالة المستمع السابق إن وُجد (يمنع تراكم الـ listeners)
+        if (this._draftInputHandler) {
+            tbody.removeEventListener('input', this._draftInputHandler);
+        }
+
+        // إنشاء مستمع جديد وحفظ مرجعه
+        this._draftInputHandler = () => {
+            const rows = Array.from(tbody.querySelectorAll('tr')).map(row => ({
+                weight: row.querySelector('.weight-input').value,
+                reps: row.querySelector('.reps-input').value,
+                operation_id: row.dataset.operationId,
+                rpe: row.querySelector('.rpe-input').value,
+                rir: row.querySelector('.rir-input').value,
+            }));
+            ExerciseDraft.save(select.value, rows);
+        };
+
+        tbody.addEventListener('input', this._draftInputHandler);
+    },
+
+    addNewRow(initialWeight = null, initialReps = null, operationId = null, initialRpe = null, initialRir = null) {
         const tbody = document.getElementById('dynamic-sets-body');
         const rowCount = tbody.rows.length + 1;
 
-        let defaultWeight = '';
-        let defaultReps = '';
+        let defaultWeight = initialWeight !== null ? initialWeight : '';
+        let defaultReps = initialReps !== null ? initialReps : '';
         const rows = Array.from(tbody.rows);
 
-        for (let i = rows.length - 1; i >= 0; i--) {
-            const wVal = rows[i].querySelector('.weight-input').value;
-            const rVal = rows[i].querySelector('.reps-input').value;
-            if (wVal || rVal) {
-                defaultWeight = wVal;
-                defaultReps = rVal;
-                break;
+        if (initialWeight === null && initialReps === null) {
+            for (let i = rows.length - 1; i >= 0; i--) {
+                const wVal = rows[i].querySelector('.weight-input').value;
+                const rVal = rows[i].querySelector('.reps-input').value;
+                if (wVal || rVal) {
+                    defaultWeight = wVal;
+                    defaultReps = rVal;
+                    break;
+                }
             }
         }
 
         const tr = document.createElement('tr');
         tr.className = 'set-table-row';
+        tr.dataset.operationId = operationId || createOperationId();
         tr.innerHTML = `
         <td class="set-number-cell">${rowCount}</td>
         <td><input type="number" class="table-input weight-input" step="0.1" inputmode="decimal" value="${defaultWeight}" placeholder="0"></td>
         <td><input type="number" class="table-input reps-input" inputmode="numeric" value="${defaultReps}" placeholder="0"></td>
+        <td><input type="number" class="table-input rpe-input" min="1" max="10" step="0.5" value="${initialRpe ?? ''}" placeholder="RPE"></td>
+        <td><input type="number" class="table-input rir-input" min="0" max="10" step="1" value="${initialRir ?? ''}" placeholder="RIR"></td>
         <td><button class="btn-delete-row" onclick="this.closest('tr').remove(); ExerciseManager.reindexRows();">❌</button></td>
         `;
         tbody.appendChild(tr);
@@ -190,6 +335,9 @@ const ExerciseManager = {
         const rows = document.querySelectorAll('#dynamic-sets-body tr');
         const exerciseName = select.options[select.selectedIndex].text;
 
+        // حفظ القيمة قبل التصفير لتجنب الشرط الفارغ
+        const completedExerciseId = select.value;
+
         if (rows.length === 0) {
             UI.showSnackbar('الرجاء إضافة مجموعة واحدة على الأقل للاستمرار', 'error');
             return;
@@ -205,9 +353,12 @@ const ExerciseManager = {
             if (!weight || !reps) isValid = false;
 
             setsData.push({
-                exercise_id: select.value,
+                exercise_id: completedExerciseId,
                 weight: parseFloat(weight),
-                          reps: parseInt(reps, 10)
+                reps: parseInt(reps, 10),
+                client_operation_id: row.dataset.operationId,
+                rpe: row.querySelector('.rpe-input').value ? parseFloat(row.querySelector('.rpe-input').value) : null,
+                rir: row.querySelector('.rir-input').value ? parseInt(row.querySelector('.rir-input').value, 10) : null,
             });
         });
 
@@ -218,30 +369,121 @@ const ExerciseManager = {
 
         UI.setButtonLoading(buttonEl, '⏳ جاري الحفظ...', true);
 
+        // نبدأ من حيث توقفنا لو كانت هذه محاولة إعادة إرسال بعد فشل جزئي،
+        // بدل إعادة إرسال المجموعات اللي نجحت أصلاً (تكرار).
+        const alreadySavedCount = ExerciseDraft.getSavedCount(completedExerciseId);
+        const remaining = setsData.slice(alreadySavedCount);
+
+        let queuedAny = false;
         try {
-            for (const setData of setsData) {
+            for (const setData of remaining) {
                 const savedSet = await SessionManager.addSet(setData);
+                if (savedSet && savedSet.queued) {
+                    queuedAny = true;
+                    UI.showSnackbar('تم حفظ المجموعة محلياً بانتظار الاتصال', 'info');
+                    break;
+                }
                 state.workout.last_set = savedSet;
                 state.workout.sets.push(savedSet);
                 state.workout.total_volume += (setData.weight * setData.reps);
+                ExerciseDraft.markSetSaved(completedExerciseId);
             }
+
+            if (queuedAny) {
+                return;
+            }
+
+            // تنظيف المسودة قبل تصفير select.value (لضمان استخدام المفتاح الصحيح)
+            ExerciseDraft.clear(completedExerciseId);
 
             UI.showSnackbar(`🔒 تم قفل وحفظ جهاز: ${exerciseName}`);
             select.value = '';
             document.getElementById('dynamic-sets-section').style.display = 'none';
 
-            UI.renderWorkoutPage();
+            // إدارة الرسم: مرة واحدة فقط
+            const isPlannedExercise = (
+                typeof PlannedSession !== 'undefined' &&
+                PlannedSession.isActive &&
+                completedExerciseId === PlannedSession.currentExerciseId
+            );
 
-            if (typeof PlannedSession !== 'undefined' && PlannedSession.isActive) {
-                await PlannedSession.completeCurrentExercise();
+            if (isPlannedExercise) {
+                await PlannedSession.completeCurrentExercise(); // تستدعي renderUI وبالتالي UI.renderWorkoutPage
+            } else {
+                UI.renderWorkoutPage(); // تحديث قائمة المجموعات للتمارين الإضافية/الحرة
             }
 
         } catch (e) {
-            UI.showSnackbar('خطأ أثناء عملية الحفظ والاتصال: ' + e.message, 'error');
+            // لا نمسح الـ Draft هنا: المجموعات اللي نجحت محفوظة (markSetSaved)،
+            // والباقي لسه بالجدول. إعادة الضغط على الزر ترسل الباقي فقط.
+            UI.showSnackbar('خطأ أثناء عملية الحفظ والاتصال، جرّب اضغط "حفظ" مرة ثانية لاحقًا', 'error');
         } finally {
             UI.setButtonLoading(buttonEl, '🔒 حفظ وقفل الجهاز', false);
         }
     }
+};
+
+// =========================================================================
+// ExerciseDraft: حفظ محلي بسيط لما يكتبه المستخدم بالجدول الحالي،
+// حتى لا يضيع عند إغلاق التطبيق أو تحديث الصفحة أو انقطاع النت.
+// السيرفر يبقى دائمًا مصدر الحقيقة للمجموعات المحفوظة فعليًا؛ هذا فقط
+// يحمي "المسودة" (القيم المكتوبة ولم تُرسل بعد) + عدّاد ما أُرسل فعليًا
+// لمنع الإرسال المكرر عند إعادة المحاولة بعد فشل جزئي.
+// =========================================================================
+const ExerciseDraft = {
+    _key(exerciseId) {
+        const sessionId = state.workout && state.workout.session ? state.workout.session.id : 'no-session';
+        return `mygym_draft_${sessionId}_${exerciseId}`;
+    },
+
+    save(exerciseId, rowsData) {
+        try {
+            const existing = this._read(exerciseId);
+            localStorage.setItem(this._key(exerciseId), JSON.stringify({
+                rows: rowsData,
+                savedCount: existing ? existing.savedCount : 0,
+            }));
+        } catch (e) {
+            console.warn('ExerciseDraft.save failed:', e);
+        }
+    },
+
+    _read(exerciseId) {
+        try {
+            const raw = localStorage.getItem(this._key(exerciseId));
+            return raw ? JSON.parse(raw) : null;
+        } catch (e) {
+            return null;
+        }
+    },
+
+    restore(exerciseId) {
+        const data = this._read(exerciseId);
+        return data ? data.rows : null;
+    },
+
+    getSavedCount(exerciseId) {
+        const data = this._read(exerciseId);
+        return data ? data.savedCount : 0;
+    },
+
+    markSetSaved(exerciseId) {
+        const data = this._read(exerciseId) || { rows: [], savedCount: 0 };
+        data.savedCount += 1;
+        try {
+            localStorage.setItem(this._key(exerciseId), JSON.stringify(data));
+        } catch (e) {
+            console.warn('ExerciseDraft.markSetSaved failed:', e);
+        }
+    },
+
+    clear(exerciseId) {
+        try {
+            localStorage.removeItem(this._key(exerciseId));
+        } catch (e) {
+            // تجاهل
+        }
+    },
 };
 
 // 5️⃣ UI LAYER (المسؤول الحصري المباشر عن العرض وقراءة البيانات من الـ State فقط)
@@ -252,17 +494,17 @@ const UI = {
         const sectionTitle = document.getElementById('workout-section-title');
 
         if (state.workout && state.workout.session) {
-            if (sectionTitle) sectionTitle.textContent = '⚡ الجلسة القائمة حالياً';
+            if (sectionTitle) sectionTitle.innerHTML = '<i data-lucide="zap" class="section-icon"></i> الجلسة القائمة حالياً';
             if (mainBtn) {
                 mainBtn.textContent = 'استمرار التمرين الحالي ⚡';
-                mainBtn.style.background = '#10b981';
+                mainBtn.style.background = '';
             }
             if (abandonBtn) abandonBtn.style.display = 'block';
         } else {
-            if (sectionTitle) sectionTitle.textContent = '🚀 ابدأ تمرينًا جديدًا';
+            if (sectionTitle) sectionTitle.innerHTML = '<i data-lucide="zap" class="section-icon"></i> ابدأ تمرينًا جديدًا';
             if (mainBtn) {
                 mainBtn.textContent = 'ابدأ تمرينًا';
-                mainBtn.style.background = '#2563eb';
+                mainBtn.style.background = '';
             }
             if (abandonBtn) abandonBtn.style.display = 'none';
         }
@@ -295,7 +537,7 @@ const UI = {
                 row.innerHTML = `
                 <div class="set-main">
                 <span class="set-badge">${set.exercise_name}</span>
-                <span class="set-info">${set.weight} كجم × ${set.reps} عدات</span>
+                <span class="set-info">${set.weight} كجم × ${set.reps} عدات${set.rpe != null ? ` · RPE ${set.rpe}` : ''}${set.rir != null ? ` · RIR ${set.rir}` : ''}</span>
                 </div>
                 `;
                 list.appendChild(row);
@@ -354,7 +596,7 @@ const UI = {
 };
 
 // =================================================================
-// 🆕 6️⃣ HISTORY VIEWER (تمت إضافته لعرض تفاصيل الجلسات السابقة)
+// HISTORY VIEWER (لعرض تفاصيل الجلسات السابقة)
 // =================================================================
 const History = {
     currentSessionId: null,  // لتخزين معرف الجلسة المعروضة
@@ -419,7 +661,7 @@ const History = {
             sets.forEach(set => {
                 const name = set.exercise_name || 'تمرين غير معروف';
                 if (!groups[name]) groups[name] = [];
-                groups[name].push({ weight: set.weight, reps: set.reps });
+                groups[name].push({ weight: set.weight, reps: set.reps, rpe: set.rpe, rir: set.rir });
             });
         }
 
@@ -447,6 +689,8 @@ const History = {
                     item.innerHTML = `
                     <span class="modal-set-weight">${set.weight} كجم</span>
                     <span class="modal-set-reps">× ${set.reps} عدات</span>
+                    ${set.rpe != null ? `<span>RPE ${set.rpe}</span>` : ''}
+                    ${set.rir != null ? `<span>RIR ${set.rir}</span>` : ''}
                     `;
                     setsDiv.appendChild(item);
                 });
@@ -502,55 +746,54 @@ async function abandonActiveSession(btn) {
     await SessionManager.abandon(btn);
 }
 
-// ⚠️ تم تعديل هذه الدالة (أضفنا onclick + مدة التمرين)
 async function loadHistory() {
     const list = document.getElementById("history-list");
     if (!list) return;
+
+    list.innerHTML = '<div class="skeleton-list" aria-label="جاري تحميل السجل"><span></span><span></span><span></span></div>';
 
     try {
         const sessions = await API.get('/workouts/history');
 
         if (!sessions.length) {
             list.innerHTML = `
-            <div class="history-empty">
-            لا توجد تمارين سابقة
+            <div class="empty-state">
+                <i data-lucide="calendar-plus" class="empty-icon"></i>
+                <strong>سجّل أول جلسة لك</strong>
+                <span>كل تمرين جديد يضيف نقطة واضحة لمسار تقدمك.</span>
+                <button class="btn-primary empty-cta" onclick="handleMainButtonClick(this)">ابدأ أول تمرين</button>
             </div>
             `;
+            if (window.lucide) lucide.createIcons();
+            Dashboard.renderStreak([]);
+            Dashboard.renderEmptyComparison();
             return;
         }
 
-        list.innerHTML = "";
+        // استخدم endpoint الـ batch (طلب واحد بدل N+1)
+        let detailedSessions;
+        try {
+            const batchData = await API.get('/workouts/history/detailed?limit=30');
+            detailedSessions = batchData.map(item => ({
+                summary: item.session,
+                details: {
+                    session: item.session,
+                    sets: item.sets,
+                    total_volume: item.total_volume,
+                },
+            }));
+        } catch(batchErr) {
+            console.warn('Batch endpoint فشل، استخدام N+1', batchErr);
+            // fallback للطريقة القديمة
+            detailedSessions = await Promise.all(sessions.map(async session => ({
+                summary: session,
+                details: await API.get(`/workouts/${session.id}`),
+            })));
+        }
 
-        sessions.forEach(session => {
-            const row = document.createElement("div");
-            row.className = "history-row";
-            // ✨ جعل البطاقة قابلة للضغط
-            row.onclick = () => History.open(session.id);
-
-            // حساب المدة إذا كانت منتهية
-            let durationText = '';
-            if (session.ended_at) {
-                const start = new Date(session.started_at);
-                const end = new Date(session.ended_at);
-                const diffMin = Math.floor((end - start) / 60000);
-                durationText = diffMin > 0 ? `${diffMin} دقيقة` : '< 1 دقيقة';
-            }
-
-            row.innerHTML = `
-            <div class="history-date">
-            ${new Date(session.started_at).toLocaleDateString("ar-SA")}
-            </div>
-            <div class="history-volume">
-            ${session.volume_kg || 0} كجم
-            </div>
-            <div class="history-sets">
-            ${session.sets_count || 0} مجموعات
-            ${durationText ? `<span style="font-size:0.8rem; color:#6b7280; margin-right:8px;">⏱️ ${durationText}</span>` : ''}
-            </div>
-            `;
-
-            list.appendChild(row);
-        });
+        Dashboard.renderTimeline(detailedSessions);
+        Dashboard.renderStreak(sessions);
+        Dashboard.renderAutomaticComparison(detailedSessions);
 
     } catch (err) {
         console.error(err);
@@ -563,6 +806,263 @@ async function loadHistory() {
     }
 }
 
+async function loadWeeklyVolume() {
+    const target = document.getElementById('weekly-volume-bars');
+    if (!target) return;
+
+    try {
+        const data = await API.get('/workouts/volume/weekly/current');
+        Dashboard.renderWeeklyVolume(data);
+    } catch (err) {
+        console.error(err);
+        target.innerHTML = '<div class="weekly-volume-empty"><strong>تعذر تحميل حجم هذا الأسبوع</strong><span>تحقق من اتصالك وحاول مرة أخرى.</span></div>';
+    }
+}
+
+const Dashboard = {
+    rows: [],
+
+    buildRows(detailedSessions) {
+        const rows = [];
+        detailedSessions.forEach(({ summary, details }) => {
+            const grouped = {};
+            (details.sets || []).forEach(set => {
+                const name = set.exercise_name || 'تمرين غير معروف';
+                const bucket = grouped[name] || {
+                    name,
+                    sessionId: summary.id,
+                    date: summary.started_at,
+                    volume: 0,
+                    maxWeight: 0,
+                    maxReps: 0,
+                    sets: 0,
+                    rpe: [],
+                    rir: [],
+                };
+                bucket.volume += Number(set.weight) * Number(set.reps);
+                bucket.maxWeight = Math.max(bucket.maxWeight, Number(set.weight));
+                bucket.maxReps = Math.max(bucket.maxReps, Number(set.reps));
+                bucket.sets += 1;
+                if (set.rpe != null) bucket.rpe.push(Number(set.rpe));
+                if (set.rir != null) bucket.rir.push(Number(set.rir));
+                grouped[name] = bucket;
+            });
+
+            Object.values(grouped).forEach(row => {
+                row.avgRpe = row.rpe.length ? row.rpe.reduce((a, b) => a + b, 0) / row.rpe.length : null;
+                row.avgRir = row.rir.length ? row.rir.reduce((a, b) => a + b, 0) / row.rir.length : null;
+                rows.push(row);
+            });
+        });
+        return rows.sort((a, b) => new Date(a.date) - new Date(b.date));
+    },
+
+    renderWeeklyVolume(data) {
+        const target = document.getElementById('weekly-volume-bars');
+        if (!target) return;
+
+        const volumes = Array.isArray(data?.volumes) ? data.volumes : [];
+        if (!volumes.length) {
+            target.innerHTML = '<div class="weekly-volume-empty"><strong>لا توجد مجموعات مسجلة في هذا الأسبوع</strong><span>ابدأ بتسجيل أول جلسة لمتابعة حجمك الأسبوعي.</span></div>';
+            return;
+        }
+
+        const maxSets = Math.max(...volumes.map(item => Number(item.sets) || 0), 1);
+        const weekLabel = `${data.week_start} — ${data.week_end}`;
+        target.innerHTML = `
+            <div class="weekly-volume-meta"><span>الأسبوع الحالي</span><strong>${weekLabel}</strong></div>
+            <div class="weekly-volume-list">${volumes.map(item => {
+                const sets = Math.max(Number(item.sets) || 0, 0);
+                const width = Math.max(Math.round((sets / maxSets) * 100), 4);
+                const muscle = item.muscle || 'غير محدد';
+                return `
+                    <div class="weekly-volume-row">
+                        <div class="weekly-volume-row-head"><strong>${muscle}</strong><span>${sets} مجموعات</span></div>
+                        <div class="weekly-volume-track"><div class="weekly-volume-fill" style="width: ${width}%"></div></div>
+                    </div>
+                `;
+            }).join('')}</div>
+        `;
+    },
+
+    renderTimeline(detailedSessions) {
+        const list = document.getElementById('history-list');
+        if (!list) return;
+        list.innerHTML = '';
+        detailedSessions.forEach(({ summary, details }) => {
+            const names = [...new Set((details.sets || []).map(set => set.exercise_name).filter(Boolean))];
+            const row = document.createElement('button');
+            row.type = 'button';
+            row.className = 'history-row timeline-item';
+            row.onclick = () => History.open(summary.id);
+            row.innerHTML = `
+                <span class="timeline-dot"></span>
+                <span class="history-date">${new Date(summary.started_at).toLocaleDateString('ar-SA', { day: 'numeric', month: 'short' })}</span>
+                <span class="timeline-content"><strong>${names.slice(0, 2).join(' · ') || 'جلسة بدون تمارين'}</strong><small>${names.length > 2 ? `+ ${names.length - 2} تمارين` : ''}</small></span>
+                <span class="history-volume">${Number(summary.volume_kg || 0).toLocaleString()} كجم</span>
+                <span class="history-sets">${summary.sets_count || 0} مجموعات</span>
+            `;
+            list.appendChild(row);
+        });
+    },
+
+    renderStreak(sessions) {
+        const target = document.getElementById('streak-badge');
+        if (!target) return;
+        const days = [...new Set(sessions.map(session => new Date(session.started_at).toISOString().slice(0, 10)))].sort().reverse();
+        let streak = 0;
+        for (let index = 0; index < days.length; index += 1) {
+            const current = new Date(`${days[index]}T00:00:00`);
+            const previous = days[index + 1] ? new Date(`${days[index + 1]}T00:00:00`) : null;
+            if (index === 0 || (current - previous) / 86400000 === 1) streak += 1;
+            else break;
+        }
+        target.textContent = streak > 1 ? `🔥 ${streak} أيام متتالية` : 'ابدأ سلسلة جديدة اليوم';
+    },
+
+    renderAutomaticComparison(detailedSessions) {
+        this.rows = this.buildRows(detailedSessions);
+        const selector = document.getElementById('progress-exercise');
+        if (!selector) return;
+        const names = [...new Set(this.rows.map(row => row.name))];
+        selector.innerHTML = '<option value="">عرض تمرين آخر</option>' + names.map(name => `<option value="${name}">${name}</option>`).join('');
+        this.renderOverview();
+        const latest = this.rows[this.rows.length - 1];
+        if (latest) {
+            selector.value = latest.name;
+            this.renderComparison(latest.name);
+        } else {
+            this.renderEmptyComparison();
+        }
+        selector.onchange = () => this.renderComparison(selector.value);
+    },
+
+    median(values) {
+        const sorted = values.filter(value => Number.isFinite(value)).sort((a, b) => a - b);
+        if (!sorted.length) return null;
+        const middle = Math.floor(sorted.length / 2);
+        return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+    },
+
+    getStatisticalSummary(history) {
+        if (history.length < 2) return null;
+        const current = history[history.length - 1];
+        const previous = history[history.length - 2];
+        if (history.length < 3) {
+            return {
+                name: current.name,
+                sessions: history.length,
+                baseline: previous.maxWeight,
+                current: current.maxWeight,
+                baselineVolume: previous.volume,
+                currentVolume: current.volume,
+                direction: current.maxWeight > previous.maxWeight ? 'up' : current.maxWeight < previous.maxWeight ? 'down' : 'steady',
+                confidence: 'limited',
+            };
+        }
+
+        const windowSize = Math.min(5, Math.max(3, Math.floor(history.length / 2)));
+        const baselineWindow = history.slice(0, windowSize);
+        const currentWindow = history.slice(-windowSize);
+        const baseline = this.median(baselineWindow.map(row => row.maxWeight));
+        const currentValue = this.median(currentWindow.map(row => row.maxWeight));
+        return {
+            name: current.name,
+            sessions: history.length,
+            baseline,
+            current: currentValue,
+            baselineVolume: this.median(baselineWindow.map(row => row.volume)),
+            currentVolume: this.median(currentWindow.map(row => row.volume)),
+            direction: currentValue > baseline ? 'up' : currentValue < baseline ? 'down' : 'steady',
+            confidence: 'statistical',
+        };
+    },
+
+    renderOverview() {
+        const target = document.getElementById('progress-overview');
+        if (!target) return;
+        const summaries = [...new Set(this.rows.map(row => row.name))]
+            .map(name => this.getStatisticalSummary(this.rows.filter(row => row.name === name)))
+            .filter(Boolean);
+        if (!summaries.length) {
+            target.innerHTML = '<div class="overview-empty"><i data-lucide="bar-chart-3" class="empty-icon"></i><strong>سجّل التمرين مرتين لنبدأ المقارنة</strong><span>سيظهر هنا ملخص تقدمك عبر كل التمارين، بدون الحاجة للمقارنة يدوياً.</span></div>';
+            if (window.lucide) lucide.createIcons();
+            return;
+        }
+        target.innerHTML = `<div class="overview-label">ملخص التقدم عبر التمارين</div><div class="progress-card-grid">${summaries.map(summary => {
+            const arrow = summary.direction === 'up' ? 'arrow-up-right' : summary.direction === 'down' ? 'arrow-down-right' : 'minus';
+            const directionText = summary.direction === 'up' ? 'تحسن' : summary.direction === 'down' ? 'تراجع' : 'ثابت';
+            const difference = summary.current - summary.baseline;
+            const valueText = summary.confidence === 'limited'
+                ? `من ${summary.baseline} إلى ${summary.current} كجم`
+                : `من ${summary.baseline.toFixed(1)} إلى ${summary.current.toFixed(1)} كجم`;
+            return `<article class="progress-card"><div class="progress-card-top"><strong>${summary.name}</strong><span class="direction direction-${summary.direction}"><i data-lucide="${arrow}"></i>${directionText}</span></div><div class="progress-card-value">${valueText}</div><small>${summary.confidence === 'limited' ? 'بيانات أولية من جلستين' : `مقارنة مستقرة من ${summary.sessions} جلسات`} · ${difference >= 0 ? '+' : ''}${summary.confidence === 'limited' ? difference : difference.toFixed(1)} كجم</small></article>`;
+        }).join('')}</div>`;
+        if (window.lucide) lucide.createIcons();
+    },
+
+    renderComparison(name) {
+        const target = document.getElementById('progress-summary');
+        if (!target) return;
+        const history = this.rows.filter(row => row.name === name);
+        if (!history.length) return this.renderEmptyComparison();
+        const latest = history[history.length - 1];
+        const previous = history[history.length - 2];
+        const personalBestWeight = Math.max(...history.map(row => row.maxWeight));
+        const personalBestVolume = Math.max(...history.map(row => row.volume));
+        const change = previous ? latest.maxWeight - previous.maxWeight : null;
+        const changeClass = change == null ? '' : change >= 0 ? 'is-positive' : 'is-negative';
+        const changeText = change == null ? 'سجّل جلسة أخرى لنعرض التغير' : `${change >= 0 ? '↑' : '↓'} ${Math.abs(change).toFixed(1)} كجم عن الجلسة السابقة`;
+        const points = history.slice(-10);
+        const maxValue = Math.max(...points.map(row => row.maxWeight), 1);
+        const sparkline = points.map((row, index) => `${(index / Math.max(points.length - 1, 1)) * 100},${36 - (row.maxWeight / maxValue) * 30}`).join(' ');
+        target.innerHTML = `
+            <div class="comparison-head"><div><small>آخر أداء</small><strong>${latest.maxWeight} كجم × ${latest.maxReps}</strong></div><span class="comparison-change ${changeClass}">${changeText}</span></div>
+            <div class="comparison-grid"><div><small>أفضل وزن شخصي</small><strong>${personalBestWeight} كجم</strong></div><div><small>أفضل حجم في جلسة</small><strong>${Math.round(personalBestVolume).toLocaleString()} كجم</strong></div><div><small>الصعوبة</small><strong>${latest.avgRpe == null ? 'غير مسجل' : `RPE ${latest.avgRpe.toFixed(1)}`}${latest.avgRir == null ? '' : ` · RIR ${latest.avgRir.toFixed(1)}`}</strong></div></div>
+            <div class="sparkline-wrap"><svg viewBox="0 0 100 40" preserveAspectRatio="none" role="img" aria-label="تطور الوزن"><polyline points="${sparkline}" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke" /></svg><small>تطور أعلى وزن عبر آخر ${points.length} جلسات</small></div>
+        `;
+    },
+
+    renderEmptyComparison() {
+        const target = document.getElementById('progress-summary');
+        const overview = document.getElementById('progress-overview');
+        if (overview) {
+            overview.innerHTML = '<div class="overview-empty"><i data-lucide="bar-chart-3" class="empty-icon"></i><strong>سجّل التمرين مرتين لنبدأ المقارنة</strong><span>سيظهر هنا ملخص تقدمك عبر كل التمارين، بدون الحاجة للمقارنة يدوياً.</span></div>';
+            if (window.lucide) lucide.createIcons();
+        }
+        if (target) {
+            target.innerHTML = '<div class="comparison-empty"><i data-lucide="target" class="empty-icon"></i><strong>التفاصيل تظهر بعد تسجيل جلسات</strong><span>الملخص العام سيظهر تلقائياً عندما تتوفر بيانات كافية.</span></div>';
+            if (window.lucide) lucide.createIcons();
+        }
+    },
+
+    async loadMeasurements() {
+        const target = document.getElementById('body-measurement-summary');
+        const latest = document.getElementById('latest-measurement');
+        if (!target || !latest) return;
+        target.textContent = 'جاري تحميل القياسات...';
+        try {
+            const measurements = await API.request('/profile/measurements?limit=30', { method: 'GET' });
+            const withWeight = measurements.filter(item => item.weight != null).reverse();
+            if (!withWeight.length) {
+                latest.innerHTML = '<p class="text-muted">لا توجد قياسات بوزن مسجل بعد.</p>';
+                target.innerHTML = '<div class="comparison-empty"><strong>ابدأ أول قياس</strong><span>سجّل قياساً واحداً لنبدأ متابعة التغير.</span></div>';
+                return;
+            }
+            const last = withWeight[withWeight.length - 1];
+            const previous = withWeight[withWeight.length - 2];
+            const change = previous ? Number(last.weight) - Number(previous.weight) : null;
+            const points = withWeight.slice(-10);
+            const max = Math.max(...points.map(item => Number(item.weight)), 1);
+            const line = points.map((item, index) => `${(index / Math.max(points.length - 1, 1)) * 100},${36 - (Number(item.weight) / max) * 30}`).join(' ');
+            latest.innerHTML = `<strong>${last.weight} كجم</strong><span>${new Date(last.date).toLocaleDateString('ar-SA')}</span>`;
+            target.innerHTML = `<div class="comparison-head"><div><small>آخر وزن</small><strong>${last.weight} كجم</strong></div><span class="comparison-change ${change == null ? '' : change <= 0 ? 'is-positive' : 'is-negative'}">${change == null ? 'لا توجد مقارنة' : `${change >= 0 ? '+' : ''}${change.toFixed(1)} كجم`}</span></div><div class="sparkline-wrap"><svg viewBox="0 0 100 40" preserveAspectRatio="none" role="img" aria-label="تغير الوزن"><polyline points="${line}" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke" /></svg><small>تغير الوزن عبر آخر ${points.length} قياسات</small></div>`;
+        } catch (error) {
+            target.textContent = 'تعذر تحميل القياسات حالياً.';
+        }
+    },
+};
+
 function handleExerciseChange() { ExerciseManager.handleChange(); }
 function addNewSetRow() { ExerciseManager.addNewRow(); }
 function saveWholeExercise(btn) { ExerciseManager.saveWholeExercise(btn); }
@@ -572,6 +1072,7 @@ function finishWorkout(btn) { SessionManager.finish(btn); }
 document.addEventListener('DOMContentLoaded', async () => {
     const path = window.location.pathname;
 
+    if (path === '/workout' && window.mygymWorkoutQuality) return;
     if (path === '/workout') {
         await ExerciseManager.loadExercises();
         const sessionData = await SessionManager.restore();
@@ -579,18 +1080,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         const params = new URLSearchParams(window.location.search);
         const planId = params.get('plan_id');
 
-        if (sessionData && sessionData.session) {
-            // ✅ يوجد جلسة نشطة بالفعل على السيرفر — هذا هو المصدر الحقيقي
-            // للحقيقة (مو باراميتر الرابط). إذا كانت هذه الجلسة مرتبطة بخطة،
-            // استأنف تفاصيل الخطة دائماً (سواء دخلنا بالرابط المباشر مع
-            // ?plan_id=، أو من زر "استمرار التمرين الحالي" بدون أي باراميتر).
-            if (sessionData.session.plan_id) {
+        if (sessionData?.session) {
+            if (sessionData.session.plan_id != null) {
                 await PlannedSession.resume(sessionData.session.id);
             } else {
                 UI.renderWorkoutPage();
             }
         } else if (planId) {
-            // لا توجد أي جلسة نشطة، لكن معنا plan_id بالرابط → ابدأ خطة جديدة
             await PlannedSession.init(planId);
         } else {
             UI.showSnackbar('لا توجد جلسة نشطة، تحويل للرئيسية...', 'error');
@@ -602,6 +1098,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await SessionManager.restore();
         UI.renderHome();
         await loadHistory();
+        await loadWeeklyVolume();
     }
 });
 
@@ -611,20 +1108,40 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 const PlannedSession = {
     sessionId: null,
-    exercises: [],      // قائمة التمارين المخططة (مع الحالة)
-    currentExerciseId: null,
+    exercises: [],
+    currentExerciseId: null,   // مؤشر تقدم الخطة فقط
+    activeSelectionId: null,   // التمرين المعروض حاليًا (خطة أو إضافي)
+    extraExercises: [],        // [{exercise_id, name, isExtra: true}] -- الآن من السيرفر فقط
     isActive: false,
+
+    // إرجاع التمرين المحدد حاليًا (من الخطة أو الإضافي)
+    getActiveExercise() {
+        return this.exercises.find(e => e.exercise_id === this.activeSelectionId)
+        || this.extraExercises.find(e => e.exercise_id === this.activeSelectionId);
+    },
+
+    // 🆕 V2.4: مصدر الحقيقة الوحيد -- GET /workouts/{session_id}/exercises
+    // بدل الاشتقاق المحلي من state.workout.sets (كان عرضة لعدم الدقة
+    // ويعتمد على مطابقة الاسم). الآن يعتمد على exercise_id فعلي من السيرفر.
+    async loadExtraExercisesFromServer() {
+        try {
+            const allExercises = await API.get(`/workouts/${this.sessionId}/exercises`);
+            this.extraExercises = allExercises
+            .filter(ex => !ex.is_planned)
+            .map(ex => ({
+                exercise_id: ex.exercise_id,
+                name: ex.exercise_name,
+                isExtra: true,
+            }));
+        } catch (e) {
+            console.warn('فشل تحميل التمارين الإضافية من السيرفر:', e);
+            this.extraExercises = [];
+        }
+    },
 
     async init(planId) {
         try {
-
-            const response = await fetch(`/api/planner/plans/${planId}/start`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ notes: "" })
-            });
-            if (!response.ok) throw new Error('Failed to start planned session');
-            const data = await response.json();
+            const data = await API.post(`/planner/plans/${planId}/start`, { notes: "" });
 
             this.sessionId = data.session_id;
             this.exercises = data.planned_exercises.map(ex => ({
@@ -632,41 +1149,38 @@ const PlannedSession = {
                 is_completed: false,
             }));
 
-            this.currentExerciseId =
-            this.exercises.length > 0
-            ? this.exercises[0].exercise_id
-            : null;
+            this.currentExerciseId = this.exercises.length > 0 ? this.exercises[0].exercise_id : null;
+            this.activeSelectionId = this.currentExerciseId;
+            this.extraExercises = []; // خطة جديدة، لسه ما فيها تمارين إضافية
 
             this.isActive = true;
-            // تحديث حالة الجلسة النشطة
-            await SessionManager.restore();
-            this.renderUI();
-            this.startCurrentExercise();
+            await SessionManager.restore(); // تحديث state.workout بالجلسة الجديدة
+            this.startCurrentExercise();    // تستدعي renderUI داخلياً
         } catch (e) {
             UI.showSnackbar('فشل بدء الخطة: ' + e.message, 'error');
         }
     },
 
-    // 🆕 استئناف جلسة مخططة نشطة بالفعل على السيرفر (بعد تحديث الصفحة،
-    // إغلاق التطبيق، أو حتى فتح الرابط من جهاز آخر) دون إنشاء جلسة جديدة.
     async resume(sessionId) {
         try {
             const data = await API.get(`/planner/sessions/${sessionId}/progress`);
-
             this.sessionId = data.session_id;
             this.exercises = data.planned_exercises;
 
-            // أول تمرين لسه ما اكتمل، أو null إذا الكل خلص
             const nextPending = this.exercises.find(e => !e.is_completed);
             this.currentExerciseId = nextPending ? nextPending.exercise_id : null;
+            this.activeSelectionId = this.currentExerciseId;
 
             this.isActive = true;
-            this.renderUI();
+
+            // 🆕 من السيرفر مباشرة، مو اشتقاق محلي
+            await this.loadExtraExercisesFromServer();
 
             if (this.currentExerciseId) {
-                this.startCurrentExercise();
+                this.startCurrentExercise(); // تستدعي renderUI داخلياً
                 UI.showSnackbar('↩️ تم استئناف جلستك المخططة', 'info');
             } else {
+                this.renderUI();
                 UI.showSnackbar('🎉 كفو! أكملت جميع تمارين الخطة!', 'success');
             }
         } catch (e) {
@@ -680,87 +1194,107 @@ const PlannedSession = {
         plannedSection.style.display = 'block';
         freeSection.style.display = 'none';
 
-        const nameDisplay = document.getElementById('plan-name-display');
-        nameDisplay.textContent = `📋 الخطة: ${this.exercises[0]?.name ? 'جلسة مخططة' : ''}`;
+        const nameEl = document.getElementById('plan-current-exercise-name');
+        const current = this.getActiveExercise();
 
-        const list = document.getElementById('planned-exercises-list');
-        list.innerHTML = '';
-        this.exercises.forEach(ex => {
-            const div = document.createElement('div');
-            div.className = 'planned-exercise-item';
-
-            const isCurrent =
-            ex.exercise_id === this.currentExerciseId;
-
-            const background =
-            ex.is_completed
-            ? '#f0fdf4'
-            : (isCurrent ? '#eff6ff' : '#f9fafb');
-
-            const statusIcon =
-            ex.is_completed
-            ? '✅'
-            : (isCurrent ? '▶️' : '⬜');
-
-            div.style.cssText = `
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 12px; margin-bottom: 8px; border-radius: 8px;
-            background: ${background};
-            border: ${ex.exercise_id === this.currentExerciseId ? '2px solid #2563eb' : '1px solid #e5e7eb'};
-            cursor:
-            ${ex.is_completed ? 'default' : 'pointer'};
-            `;
-
-
-            div.innerHTML = `
-            <span>
-            <strong>${statusIcon} ${ex.name}</strong>
-            (${ex.target_sets || '?'} مجموعات${ex.target_reps ? ` × ${ex.target_reps}` : ''})</span>
-            <span style="font-size:0.85rem; color:#6b7280;">
-            ${ex.is_completed ? 'منتهي' : (ex.exercise_id === this.currentExerciseId ? 'الحالي' : 'بانتظارك')}
-            </span>
-
-            `;
-            if (!ex.is_completed) {
-                div.style.cursor = 'pointer';
-                div.onclick = () => this.startCurrentExercise(ex.exercise_id); // نمرر الـ ID مباشرة
+        if (nameEl) {
+            if (current) {
+                if (current.isExtra) {
+                    nameEl.textContent = `▶️ ${current.name} (تمرين إضافي)`;
+                } else {
+                    nameEl.textContent = `▶️ ${current.name} (${current.target_sets || '?'} مجموعات${current.target_reps ? ` × ${current.target_reps}` : ''})`;
+                }
             } else {
-                div.style.cursor = 'default';
+                nameEl.textContent = '🎉 أكملت كل تمارين الخطة';
             }
-            list.appendChild(div);
+        }
+
+        const chipsRow = document.getElementById('plan-chips-row');
+        chipsRow.innerHTML = '';
+
+        // تمارين الخطة
+        this.exercises.forEach((ex, idx) => {
+            const chip = document.createElement('div');
+            const isSelected = ex.exercise_id === this.activeSelectionId;
+            chip.className = 'plan-chip' + (ex.is_completed ? ' is-completed' : (isSelected ? ' is-current' : ''));
+            chip.textContent = ex.is_completed ? '✓' : (idx + 1);
+            chip.title = ex.name;
+            if (!ex.is_completed) {
+                chip.onclick = () => this.startCurrentExercise(ex.exercise_id);
+            }
+            chipsRow.appendChild(chip);
         });
+
+        // التمارين الإضافية
+        this.extraExercises.forEach((ex, idx) => {
+            const chip = document.createElement('div');
+            const isSelected = ex.exercise_id === this.activeSelectionId;
+            chip.className = 'plan-chip plan-chip-extra' + (isSelected ? ' is-current' : '');
+            chip.textContent = this.exercises.length + idx + 1;
+            chip.title = ex.name + ' (خارج الخطة)';
+            chip.onclick = () => this.selectExtraExercise(ex.exercise_id);
+            chipsRow.appendChild(chip);
+        });
+
         UI.renderWorkoutPage();
     },
 
+    // للتمارين الإضافية فقط -- يضبط الاختيار ويُحضر الجدول
+    selectExtraExercise(exerciseId) {
+        this.activeSelectionId = exerciseId;
+        const select = document.getElementById('exercise-select');
+        select.value = exerciseId;
+        ExerciseManager.handleChange();
+        this.renderUI();
+    },
+
+    // 🆕 V2.4: يحفظ التمرين الإضافي بالسيرفر فورًا (POST)، مو RAM فقط.
+    // بهذا يبقى موجودًا حتى لو صار Refresh قبل ما تسجّل أي Set له --
+    // بالضبط سيناريو "أضيفه بالنية، أتمرنه بعدين نفس اليوم".
+    async addExtraExercise(exerciseId, exerciseName) {
+        try {
+            await API.post(`/workouts/${this.sessionId}/exercises`, { exercise_id: exerciseId });
+
+            const alreadyAdded = this.extraExercises.some(e => e.exercise_id === exerciseId);
+            if (!alreadyAdded) {
+                this.extraExercises.push({
+                    exercise_id: exerciseId,
+                    name: exerciseName,
+                    isExtra: true
+                });
+            }
+            this.selectExtraExercise(exerciseId);
+        } catch (e) {
+            UI.showSnackbar('فشل إضافة التمرين: ' + e.message, 'error');
+        }
+    },
+
+    // خاص بتمارين الخطة فقط (يُستخدم داخليًا ومع الأزرار الخاصة بالخطة)
     startCurrentExercise(exercise_id = null) {
         const targetId = exercise_id || this.currentExerciseId;
-
         if (!targetId) {
             UI.showSnackbar('لا يوجد تمرين محدد', 'error');
             return;
         }
 
         const ex = this.exercises.find(e => e.exercise_id === targetId);
-
         if (!ex) {
             UI.showSnackbar('التمرين غير موجود في الخطة', 'error');
             return;
         }
 
         this.currentExerciseId = targetId;
-        // تعبئة select والجدول
+        this.activeSelectionId = targetId;
+
         const select = document.getElementById('exercise-select');
         select.value = targetId;
         ExerciseManager.handleChange();
 
-        const suggestedWeight = ex.suggested_weight;
-        const suggestedReps = ex.suggested_reps;
-
         const rows = document.querySelectorAll('#dynamic-sets-body tr');
-        if (suggestedWeight !== null && suggestedWeight !== undefined) {
+        if (ex.suggested_weight !== null && ex.suggested_weight !== undefined) {
             rows.forEach(row => {
-                row.querySelector('.weight-input').value = suggestedWeight;
-                row.querySelector('.reps-input').value = suggestedReps || '';
+                row.querySelector('.weight-input').value = ex.suggested_weight;
+                row.querySelector('.reps-input').value = ex.suggested_reps || '';
             });
         } else {
             rows.forEach(row => {
@@ -768,18 +1302,18 @@ const PlannedSession = {
                 row.querySelector('.reps-input').value = '';
             });
         }
-        // عرض عدد المجموعات المخطط له (اختياري)
+
         if (ex.target_sets) {
-            // نضبط عدد الصفوف حسب target_sets
             const tbody = document.getElementById('dynamic-sets-body');
             const currentRows = tbody.rows.length;
             if (currentRows < ex.target_sets) {
                 for (let i = currentRows; i < ex.target_sets; i++) ExerciseManager.addNewRow();
             } else if (currentRows > ex.target_sets) {
-                for (let i = currentRows; i > ex.target_sets; i--) tbody.deleteRow(i-1);
+                for (let i = currentRows; i > ex.target_sets; i--) tbody.deleteRow(i - 1);
             }
             ExerciseManager.reindexRows();
         }
+
         UI.showSnackbar(`🏋️ ابدأ: ${ex.name}`, 'info');
         this.renderUI();
     },
@@ -796,6 +1330,7 @@ const PlannedSession = {
             UI.showSnackbar(`✅ تم الحفظ، انتقل إلى: ${nextPending.name}`);
         } else {
             this.currentExerciseId = null;
+            this.activeSelectionId = null;
             this.renderUI();
             UI.showSnackbar('🎉 كفو! أكملت جميع تمارين الخطة!', 'success');
         }
@@ -804,7 +1339,14 @@ const PlannedSession = {
     cancel() {
         if (!confirm('هل تريد إلغاء الخطة والعودة للوضع الحر؟')) return;
         this.isActive = false;
+        this.sessionId = null;
+
         this.exercises = [];
+        this.extraExercises = [];
+
+        this.currentExerciseId = null;
+        this.activeSelectionId = null;
+
         document.getElementById('planned-section').style.display = 'none';
         document.getElementById('free-section').style.display = 'block';
         document.getElementById('session-title').textContent = 'جلسة جديدة';
@@ -817,4 +1359,102 @@ const PlannedSession = {
 
 function cancelPlannedSession() {
     PlannedSession.cancel();
+}
+
+// =========================================================================
+// إضافة تمرين إضافي أثناء تنفيذ الخطة (خارج التمارين المخططة أصلًا)
+// =========================================================================
+function toggleExtraExercise() {
+    const section = document.getElementById('extra-exercise-section');
+    const isHidden = section.style.display === 'none';
+    section.style.display = isHidden ? 'block' : 'none';
+
+    if (isHidden) {
+        populateExtraExerciseSelect();
+    }
+}
+
+function populateExtraExerciseSelect() {
+    const select = document.getElementById('extra-exercise-select');
+    if (!select || select.options.length > 1) return;
+
+    state.exercises.forEach(ex => {
+        const opt = document.createElement('option');
+        opt.value = ex.id;
+        opt.textContent = ex.name;
+        select.appendChild(opt);
+    });
+}
+
+async function handleExtraExerciseChange() {
+    const extraSelect = document.getElementById('extra-exercise-select');
+    if (!extraSelect.value) return;
+
+    const exerciseName = extraSelect.options[extraSelect.selectedIndex].text;
+    await PlannedSession.addExtraExercise(extraSelect.value, exerciseName);
+
+    document.getElementById('extra-exercise-section').style.display = 'none';
+    extraSelect.value = '';
+
+    const dynamicSection = document.getElementById('dynamic-sets-section');
+    if (dynamicSection) {
+        dynamicSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+// التنبيه عند انقطاع الاتصال
+window.addEventListener('offline', () => {
+    alert("⚠️ لقد فقدت الاتصال بالسيرفر! تأكد من تشغيل الـ VPN.");
+});
+
+// ====== Body Tracking Toggle ======
+async function toggleBodyTracking() {
+    const mainContainer = document.querySelector('body > .container');
+    const section = document.getElementById('body-tracking-dashboard');
+    if (!section || !mainContainer) return;
+    const isHidden = section.style.display === 'none' || section.style.display === '';
+    mainContainer.style.display = isHidden ? 'none' : 'block';
+    section.style.display = isHidden ? 'block' : 'none';
+    if (isHidden) {
+        await loadLatestMeasurement();
+        await Dashboard.loadMeasurements();
+    }
+}
+
+async function loadLatestMeasurement() {
+    const container = document.getElementById('latest-measurement');
+    if (!container) return;
+    try {
+        const res = await fetch('/api/profile/measurements/latest', {
+            headers: localStorage.getItem('mygym_profile_id')
+                ? { 'X-Profile-Id': localStorage.getItem('mygym_profile_id') }
+                : {},
+        });
+        if (!res.ok) throw new Error('Failed');
+        const m = await res.json();
+        if (!m) {
+            container.innerHTML = '<p style="color: var(--text-secondary);">لا توجد قياسات بعد</p>';
+            return;
+        }
+        container.innerHTML = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 0.9em;">
+                ${m.weight ? `<span>⚖️ الوزن: ${m.weight} كجم</span>` : ''}
+                ${m.body_fat ? `<span>📊 دهون: ${m.body_fat}%</span>` : ''}
+                ${m.waist ? `<span>📏 خصر: ${m.waist} سم</span>` : ''}
+                ${m.chest ? `<span>📏 صدر: ${m.chest} سم</span>` : ''}
+                ${m.hips ? `<span>📏 أوراك: ${m.hips} سم</span>` : ''}
+                ${m.neck ? `<span>📏 عنق: ${m.neck} سم</span>` : ''}
+                ${m.left_arm ? `<span>💪 ذراع يسار: ${m.left_arm} سم</span>` : ''}
+                ${m.right_arm ? `<span>💪 ذراع يمين: ${m.right_arm} سم</span>` : ''}
+                ${m.left_thigh ? `<span>🦵 فخذ يسار: ${m.left_thigh} سم</span>` : ''}
+                ${m.right_thigh ? `<span>🦵 فخذ يمين: ${m.right_thigh} سم</span>` : ''}
+            </div>
+            <p style="margin-top: 8px; font-size: 0.8em; color: var(--text-secondary);">
+                ${m.date} • ${m.type === 'weekly' ? 'أسبوعي' : 'شهري'}
+                ${m.goal ? ' • ' + m.goal : ''}
+            </p>
+        `;
+    } catch (err) {
+        container.innerHTML = '<p style="color: var(--text-secondary);">لا توجد قياسات بعد</p>';
+    }
 }

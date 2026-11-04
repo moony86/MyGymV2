@@ -3,6 +3,7 @@ import uuid
 import uuid6
 import tempfile
 import os
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -65,6 +66,44 @@ def test_start_workout(db_session):
     assert "id" in data
     assert data["status"] == "ACTIVE"
 
+
+def test_profiles_keep_active_sessions_separate():
+    first = client.post("/api/profiles", json={"name": "أحمد"}).json()
+    second = client.post("/api/profiles", json={"name": "سارة"}).json()
+
+    first_headers = {"X-Profile-Id": first["id"]}
+    second_headers = {"X-Profile-Id": second["id"]}
+    first_start = client.post("/api/workouts/start", headers=first_headers, json={})
+    second_start = client.post("/api/workouts/start", headers=second_headers, json={})
+
+    assert first_start.status_code == 200
+    assert second_start.status_code == 200
+    assert client.get("/api/workouts/active", headers=first_headers).json()["session"]["id"] == first_start.json()["id"]
+    assert client.get("/api/workouts/active", headers=second_headers).json()["session"]["id"] == second_start.json()["id"]
+
+
+def test_progress_comparison_reports_change(db_session, sample_exercise):
+    for weight in (60, 70):
+        start = client.post("/api/workouts/start", json={})
+        session_id = start.json()["id"]
+        response = client.post(f"/api/workouts/{session_id}/sets", json={
+            "exercise_id": str(sample_exercise.id),
+            "weight": weight,
+            "reps": 8,
+            "rpe": 8,
+            "rir": 2,
+        })
+        assert response.status_code == 200
+        assert client.post(f"/api/workouts/{session_id}/finish").status_code == 200
+
+    response = client.get(f"/api/workouts/progress?exercise_id={sample_exercise.id}")
+    assert response.status_code == 200
+    report = response.json()[0]
+    assert report["latest"]["max_weight"] == 70.0
+    assert report["change"]["max_weight"] == 10.0
+    assert report["change"]["volume"] == 80.0
+    assert report["latest"]["avg_rpe"] == 8.0
+
 def test_get_active_workout_empty():
     response = client.get("/api/workouts/active")
     assert response.status_code == 200
@@ -92,6 +131,26 @@ def test_add_set_to_workout(db_session, sample_exercise):
     data = response.json()
     assert Decimal(data["weight"]) == Decimal("70.00")
     assert data["reps"] == 8
+
+def test_retrying_same_set_operation_does_not_duplicate(db_session, sample_exercise):
+    from src.infrastructure.db.models import SetTable
+
+    start_resp = client.post("/api/workouts/start", json={})
+    session_id = start_resp.json()["id"]
+    payload = {
+        "exercise_id": str(sample_exercise.id),
+        "weight": 70.0,
+        "reps": 8,
+        "client_operation_id": "offline-operation-1",
+    }
+
+    first = client.post(f"/api/workouts/{session_id}/sets", json=payload)
+    second = client.post(f"/api/workouts/{session_id}/sets", json=payload)
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert second.json()["id"] == first.json()["id"]
+    assert db_session.query(SetTable).count() == 1
 
 def test_get_workout_details(db_session, sample_exercise):
     start_resp = client.post("/api/workouts/start", json={})
@@ -138,3 +197,92 @@ def test_get_last_set(db_session, sample_exercise):
     assert response.status_code == 200
     data = response.json()
     assert Decimal(data["weight"]) == Decimal("70.00")
+
+
+def create_weekly_set(db_session, profile_id, exercise, started_at, set_type="working", is_skipped=False, is_warmup=False):
+    from src.infrastructure.db.models import PerformedExerciseTable, SessionTable, SetTable
+
+    session_id = str(uuid6.uuid7())
+    performed_exercise_id = str(uuid6.uuid7())
+    session = SessionTable(
+        id=session_id,
+        profile_id=profile_id,
+        status="COMPLETED",
+        started_at=started_at,
+    )
+    performed_exercise = PerformedExerciseTable(
+        id=performed_exercise_id,
+        session_id=session_id,
+        exercise_id=str(exercise.id),
+        is_skipped=is_skipped,
+        is_warmup=is_warmup,
+    )
+    set_row = SetTable(
+        id=str(uuid6.uuid7()),
+        performed_exercise_id=performed_exercise_id,
+        weight=Decimal("10.00"),
+        reps=2,
+        set_type=set_type,
+    )
+    db_session.add(session)
+    db_session.add(performed_exercise)
+    db_session.add(set_row)
+    db_session.commit()
+
+
+def test_current_weekly_muscle_volume_endpoint_filters_and_scopes(db_session, sample_exercise):
+    from src.infrastructure.db.models import ExerciseTable
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    week_start = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+    week_end = week_start + timedelta(days=7)
+    back_exercise = ExerciseTable(
+        id=str(uuid6.uuid7()),
+        name="Back Exercise",
+        primary_muscle="back",
+        is_active=True,
+    )
+    db_session.add(back_exercise)
+    db_session.commit()
+
+    profile_a = "profile-a"
+    profile_b = "profile-b"
+    create_weekly_set(db_session, profile_a, sample_exercise, week_start)
+    create_weekly_set(db_session, profile_a, sample_exercise, week_end - timedelta(microseconds=1))
+    create_weekly_set(db_session, profile_a, sample_exercise, week_end)
+    create_weekly_set(db_session, profile_a, sample_exercise, week_start - timedelta(days=1))
+    create_weekly_set(db_session, profile_a, sample_exercise, week_start, set_type="warmup")
+    create_weekly_set(db_session, profile_a, back_exercise, week_start, is_skipped=True)
+    create_weekly_set(db_session, profile_b, back_exercise, week_start)
+
+    response = client.get(
+        "/api/workouts/volume/weekly/current",
+        headers={"X-Profile-Id": profile_a},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "week_start": week_start.date().isoformat(),
+        "week_end": week_end.date().isoformat(),
+        "volumes": [
+            {"muscle": "chest", "sets": 2},
+        ],
+    }
+
+
+def test_weekly_query_helpers_use_profile_and_exclusive_end(db_session, sample_exercise):
+    from src.infrastructure.db.models import ExerciseTable
+    from src.queries.history_queries import get_weekly_volume
+    from src.queries.metrics_queries import get_muscle_volume_by_week
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    week_start = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+    week_end = week_start + timedelta(days=7)
+    profile_a = "profile-a"
+    profile_b = "profile-b"
+    create_weekly_set(db_session, profile_a, sample_exercise, week_start)
+    create_weekly_set(db_session, profile_a, sample_exercise, week_end)
+    create_weekly_set(db_session, profile_b, sample_exercise, week_start)
+
+    assert get_weekly_volume(db_session, profile_a, week_start, week_end) == Decimal("20.00")
+    assert get_muscle_volume_by_week(db_session, profile_a, week_start, week_end) == [("chest", Decimal("20.00"))]

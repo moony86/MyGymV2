@@ -2,99 +2,199 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>الخطط - MyGym</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css?v=2">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
     <style>
         .plan-card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .plan-card h3 { margin: 0 0 4px 0; }
         .plan-exercises { margin-top: 8px; font-size: 0.9rem; color: #4b5563; }
-        .btn-small { padding: 8px 16px; font-size: 0.85rem; width: auto; }
-        .flex-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+        .btn-small { padding: 6px 12px; font-size: 0.85rem; width: auto; }
+        .flex-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 2000; padding: 20px; }
-        .modal-content { background: white; border-radius: 16px; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px; }
+        .modal-content { background: white; border-radius: 16px; max-width: 550px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 12px; margin-bottom: 16px; }
         .modal-close { background: none; border: none; font-size: 1.75rem; cursor: pointer; color: #6b7280; }
-        .exercise-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f3f4f6; }
-        .order-badge { background: #e5e7eb; padding: 2px 10px; border-radius: 12px; font-size: 0.8rem; }
+        
+        .exercise-item { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; margin-bottom: 8px; }
+        .order-badge { background: #6366f1; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; }
         .input-group { margin-bottom: 12px; }
-        .input-group label { display: block; font-size: 0.9rem; font-weight: 500; margin-bottom: 4px; }
-        .input-group input, .input-group select { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; }
+        .input-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; color: #374151; }
+        .input-group input, .input-group select { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; }
+        
+        .day-checkbox { display: none; }
+        .day-label { padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 20px; font-size: 0.8rem; cursor: pointer; user-select: none; transition: 0.2s; }
+        .day-checkbox:checked + .day-label { background: #6366f1; color: white; border-color: #6366f1; }
+        
+        .alt-badge { background: #fef3c7; color: #d97706; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; }
+        /* ===== تقييم الخطة ===== */
+        .eval-status-pass { background: #dcfce7; color: #166534; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; }
+        .eval-status-warning { background: #fef3c7; color: #92400e; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; }
+        .eval-status-fail { background: #fee2e2; color: #991b1b; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem; }
+        .eval-section { margin-top: 18px; }
+        .eval-section h4 { margin: 0 0 8px 0; font-size: 0.9rem; color: #374151; font-weight: 700; }
+        .eval-section-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
+        .eval-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid #f3f4f6; gap: 10px; }
+        .eval-row:last-child { border-bottom: none; }
+        .eval-muscle-name { font-weight: 700; color: #111827; font-size: 0.95rem; }
+        .eval-sets { color: #374151; font-size: 0.9rem; font-weight: 600; }
+        .eval-range { color: #9ca3af; font-size: 0.72rem; margin-top: 2px; }
+        .eval-badge-ok { background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700; display: inline-block; margin-top: 4px; }
+        .eval-badge-low { background: #fee2e2; color: #991b1b; padding: 3px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700; display: inline-block; margin-top: 4px; }
+        .eval-badge-high { background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 12px; font-size: 0.72rem; font-weight: 700; display: inline-block; margin-top: 4px; }
+        .eval-summary { display: flex; justify-content: space-between; align-items: center; padding: 14px; background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%); border-radius: 10px; margin-bottom: 12px; gap: 10px; flex-wrap: wrap; }
+        .eval-btn { background: #6366f1 !important; color: white !important; border: none !important; }
+        .eval-btn:hover { background: #4f46e5 !important; }
+
     </style>
-</head>
+<link rel="stylesheet" href="/static/auth.css?v=2"><script src="/static/auth.js?v=3"></script>
+<style>.modal .text-muted{color:#475569;line-height:1.8}.eval-row{gap:12px;flex-wrap:wrap}.eval-row strong{font-size:14px}</style></head>
 <body>
     <div class="container">
         <header>
             <button class="btn-back" onclick="window.location.href='/'">← عودة</button>
-            <h1>📋 خططي التدريبية</h1>
+            <h1><i data-lucide="clipboard-list" class="ui-icon"></i> خططي التدريبية</h1>
         </header>
         <main>
             <section class="card">
                 <div class="flex-row" style="justify-content: space-between;">
                     <h2>الخطط المتاحة</h2>
-                    <button class="btn-primary btn-small" onclick="showCreatePlanModal()">+ خطة جديدة</button>
+                    <div class="flex-row" style="gap: 8px;">
+                        <button class="btn-primary btn-small" style="background:#8b5cf6;" onclick="generatePlan()">🎲 ولّد برنامج</button>
+                        <button class="btn-primary btn-small" onclick="showCreatePlanModal()">+ خطة جديدة</button>
+                    </div>
                 </div>
-                <div id="plans-list">
+                <div id="plans-list" style="margin-top: 12px;">
                     <p class="text-muted">جاري التحميل...</p>
                 </div>
             </section>
         </main>
     </div>
 
-    <!-- مودال إنشاء خطة -->
+    <!-- مودال إنشاء / تعديل خطة -->
     <div id="create-plan-modal" class="modal-overlay" style="display: none;" onclick="if(event.target===this) closeModal('create-plan-modal')">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>خطة جديدة</h2>
+                <h2 id="plan-modal-title">خطة جديدة</h2>
                 <button class="modal-close" onclick="closeModal('create-plan-modal')">✕</button>
             </div>
-            <form id="create-plan-form" onsubmit="createPlan(event)">
+            <form id="create-plan-form" onsubmit="submitPlanForm(event)">
                 <div class="input-group">
                     <label>اسم الخطة</label>
                     <input type="text" id="plan-name" required placeholder="مثال: Push Day">
                 </div>
                 <div class="input-group">
-                    <label>وصف (اختياري)</label>
-                    <input type="text" id="plan-description" placeholder="تمارين الصدر والكتف">
+                    <label>وصف الخطة (اختياري)</label>
+                    <input type="text" id="plan-description" placeholder="تمارين الصدر والترايسبس">
                 </div>
-                <div>
-                    <h4>التمارين</h4>
-                    <div id="plan-exercises-list"><p class="text-muted">لا توجد تمارين مضافة</p></div>
-                    <div class="flex-row" style="margin-top: 8px;">
-                        <select id="add-exercise-select" style="flex:1; padding: 8px; border-radius: 6px; border:1px solid #d1d5db;">
-                            <option value="">اختر تمرين...</option>
-                        </select>
-                        <button type="button" class="btn-secondary btn-small" onclick="addExerciseToForm()">➕ أضف</button>
+
+                <!-- قسم الجدولة -->
+                <div class="input-group" style="background: #f8fafc; padding: 12px; border-radius: 8px;">
+                    <label>نوع الجدولة</label>
+                    <select id="schedule-type" onchange="toggleScheduleOptions()">
+                        <option value="none">بدون جدولة آلية</option>
+                        <option value="weekly">أسبوعية (أيام محددة)</option>
+                        <option value="interval">دورية (أيام تمرين وتوقف)</option>
+                    </select>
+
+                    <div id="weekly-days-group" style="display: none; margin-top: 10px;">
+                        <label>أيام التمرين الأسبوعية:</label>
+                        <div class="flex-row" style="gap: 6px; margin-top: 6px;">
+                            <input type="checkbox" id="day-0" value="0" class="day-checkbox"><label for="day-0" class="day-label">الإثنين</label>
+                            <input type="checkbox" id="day-1" value="1" class="day-checkbox"><label for="day-1" class="day-label">الثلاثاء</label>
+                            <input type="checkbox" id="day-2" value="2" class="day-checkbox"><label for="day-2" class="day-label">الأربعاء</label>
+                            <input type="checkbox" id="day-3" value="3" class="day-checkbox"><label for="day-3" class="day-label">الخميس</label>
+                            <input type="checkbox" id="day-4" value="4" class="day-checkbox"><label for="day-4" class="day-label">الجمعة</label>
+                            <input type="checkbox" id="day-5" value="5" class="day-checkbox"><label for="day-5" class="day-label">السبت</label>
+                            <input type="checkbox" id="day-6" value="6" class="day-checkbox"><label for="day-6" class="day-label">الأحد</label>
+                        </div>
                     </div>
-                    <div class="flex-row" style="margin-top: 8px; gap: 8px; font-size: 0.9rem; flex-wrap: wrap;">
-                        <label>المجموعات: <input type="number" id="form-target-sets" value="3" style="width: 50px; padding: 4px;"></label>
-                        <label>العدات: <input type="number" id="form-target-reps" style="width: 50px; padding: 4px;" placeholder="اختياري"></label>
-                        <label>وضع الوزن:
-                            <select id="form-weight-mode" style="padding: 4px;">
-                                <option value="LAST_SESSION">آخر جلسة</option>
-                                <option value="FIXED">ثابت</option>
-                                <option value="EMPTY">فارغ</option>
-                            </select>
-                        </label>
-                        <label style="display: none;" id="fixed-weight-label">الوزن: <input type="number" id="form-fixed-weight" step="0.5" style="width: 60px; padding: 4px;"></label>
+
+                    <div id="interval-days-group" style="display: none; margin-top: 10px;">
+                        <div class="flex-row">
+                            <div style="flex:1;">
+                                <label>أيام التمرين</label>
+                                <input type="number" id="workout-days-count" min="1" value="3">
+                            </div>
+                            <div style="flex:1;">
+                                <label>أيام الراحة</label>
+                                <input type="number" id="rest-days-count" min="0" value="1">
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <button type="submit" class="btn-primary" style="margin-top: 20px;">💾 حفظ الخطة</button>
+
+                <!-- إضافة تمارين -->
+                <div style="margin-top: 16px;">
+                    <h4>التمارين الأساسية والبدائل</h4>
+                    <div id="plan-exercises-list" style="margin-top: 8px;"><p class="text-muted">لا توجد تمارين مضافة</p></div>
+
+                    <div style="background: #f3f4f6; padding: 10px; border-radius: 8px; margin-top: 10px;">
+                        <div class="input-group" style="margin-bottom: 6px;">
+                            <label>التمرين الأساسي:</label>
+                            <select id="add-exercise-select"><option value="">اختر تمرين...</option></select>
+                        </div>
+                        <div class="input-group" style="margin-bottom: 6px;">
+                            <label>التمرين البديل (اختياري):</label>
+                            <select id="add-alt-exercise-select"><option value="">بدون بديل</option></select>
+                        </div>
+
+                        <div class="flex-row" style="gap: 8px; font-size: 0.85rem; flex-wrap: wrap;">
+                            <label>المجموعات: <input type="number" id="form-target-sets" value="3" style="width: 50px; padding: 4px;"></label>
+                            <label>العدات: <input type="number" id="form-target-reps" style="width: 50px; padding: 4px;" placeholder="مثال: 10"></label>
+                            <label>الوزن:
+                                <select id="form-weight-mode" style="padding: 4px;">
+                                    <option value="LAST_SESSION">آخر جلسة</option>
+                                    <option value="FIXED">ثابت</option>
+                                    <option value="EMPTY">فارغ</option>
+                                </select>
+                            </label>
+                            <label style="display: none;" id="fixed-weight-label">القيمة: <input type="number" id="form-fixed-weight" step="0.5" style="width: 60px; padding: 4px;"></label>
+                        </div>
+                        <button type="button" class="btn-secondary btn-small" style="width: 100%; margin-top: 8px;" onclick="addExerciseToForm()">➕ إضافة التمرين للقائمة</button>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary" style="margin-top: 20px;" id="plan-modal-submit-btn">💾 حفظ الخطة</button>
             </form>
+        </div>
+    </div>
+
+    <!-- مودال تقييم الخطة -->
+    <div id="eval-modal" class="modal-overlay" style="display: none;" onclick="if(event.target===this) closeModal('eval-modal')">
+        <div class="modal-content" style="max-width: 620px;">
+            <div class="modal-header">
+                <h2 id="eval-modal-title">📊 تقييم الخطة</h2>
+                <button class="modal-close" onclick="closeModal('eval-modal')">✕</button>
+            </div>
+            <div id="eval-modal-body">
+                <p class="text-muted">جاري التحميل...</p>
+            </div>
         </div>
     </div>
 
     <div id="snackbar" class="snackbar"></div>
 
+
+    <script src="/static/vendor/lucide.min.js"></script>
+    <script>if (window.lucide) lucide.createIcons();</script>
     <script>
         const API_BASE = '/api/planner';
         let allExercises = [];
         let formExercises = [];
+        let editingPlanId = null;
 
         async function apiRequest(path, options = {}) {
             const url = `${API_BASE}${path}`;
             const config = {
-                headers: { 'Content-Type': 'application/json', ...options.headers },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(localStorage.getItem('mygym_profile_id') ? { 'X-Profile-Id': localStorage.getItem('mygym_profile_id') } : {}),
+                    ...options.headers,
+                },
                 ...options
             };
             const res = await fetch(url, config);
@@ -121,14 +221,40 @@
         }
 
         function populateSelects() {
-            const sel = document.getElementById('add-exercise-select');
-            sel.innerHTML = '<option value="">اختر تمرين...</option>';
+            const mainSel = document.getElementById('add-exercise-select');
+            const altSel = document.getElementById('add-alt-exercise-select');
+            mainSel.innerHTML = '<option value="">اختر تمرين...</option>';
+            altSel.innerHTML = '<option value="">بدون بديل</option>';
+
             allExercises.forEach(ex => {
-                const opt = document.createElement('option');
-                opt.value = ex.id;
-                opt.textContent = ex.name;
-                sel.appendChild(opt);
+                const opt1 = document.createElement('option');
+                opt1.value = ex.id; opt1.textContent = ex.name;
+                mainSel.appendChild(opt1);
+
+                const opt2 = document.createElement('option');
+                opt2.value = ex.id; opt2.textContent = ex.name;
+                altSel.appendChild(opt2);
             });
+        }
+
+        function toggleScheduleOptions() {
+            const type = document.getElementById('schedule-type').value;
+            document.getElementById('weekly-days-group').style.display = type === 'weekly' ? 'block' : 'none';
+            document.getElementById('interval-days-group').style.display = type === 'interval' ? 'block' : 'none';
+        }
+
+        async function generatePlan() {
+            if (!confirm('توليد برنامج جديد؟\n\nسيتم إنشاء 3 خطط Full Body تلقائياً بناءً على بروفايلك.')) return;
+            
+            try {
+                const result = await apiRequest('/generate', { method: 'POST' });
+                const count = result.plans ? result.plans.length : 0;
+                showSnackbar(`✅ تم توليد ${count} خطة`);
+                await loadPlans();
+            } catch(e) {
+                console.error(e);
+                showSnackbar(e.message || 'تعذر التوليد', 'error');
+            }
         }
 
         async function loadPlans() {
@@ -143,13 +269,20 @@
                 plans.forEach(plan => {
                     const card = document.createElement('div');
                     card.className = 'plan-card';
-                    const exNames = (plan.exercises || []).map(e => e.exercise_name).join(' • ');
+                    const exNames = (plan.exercises || []).map(e => {
+                        let text = e.exercise_name;
+                        if(e.alternative_exercise_name) text += ` (بديل: ${e.alternative_exercise_name})`;
+                        return text;
+                    }).join(' • ');
+
                     card.innerHTML = `
                         <h3>${plan.name}</h3>
-                        <div style="color:#6b7280; font-size:0.9rem;">${plan.description || ''}</div>
+                        <div style="color:#6b7280; font-size:0.85rem;">${plan.description || ''}</div>
                         <div class="plan-exercises">${exNames || 'لا توجد تمارين'}</div>
                         <div class="flex-row" style="margin-top:10px;">
                             <button class="btn-primary btn-small" onclick="startPlan('${plan.id}')">▶ ابدأ</button>
+                            <button class="btn-secondary btn-small eval-btn" onclick="evaluatePlan('${plan.id}')">📊 تقييم</button>
+                            <button class="btn-secondary btn-small" style="background:#f59e0b; color:white;" onclick="showEditPlanModal('${plan.id}')">✏️ تعديل</button>
                             <button class="btn-danger btn-small" onclick="deletePlan('${plan.id}')">🗑️ حذف</button>
                         </div>
                     `;
@@ -161,7 +294,6 @@
         }
 
         function startPlan(planId) {
-            // نبدأ جلسة مخططة
             window.location.href = `/workout?plan_id=${planId}`;
         }
 
@@ -171,42 +303,105 @@
                 await apiRequest(`/plans/${planId}`, { method: 'DELETE' });
                 showSnackbar('✅ تم الحذف');
                 loadPlans();
+            } catch(e) { showSnackbar(e.message, 'error'); }
+        }
+
+        function showCreatePlanModal() {
+            editingPlanId = null;
+            document.getElementById('plan-modal-title').textContent = 'خطة جديدة';
+            document.getElementById('create-plan-form').reset();
+            toggleScheduleOptions();
+            formExercises = [];
+            renderFormExercises();
+            document.getElementById('create-plan-modal').style.display = 'flex';
+            if (!allExercises.length) loadExercises();
+            bindWeightModeListener();
+        }
+
+        async function showEditPlanModal(planId) {
+            try {
+                if (!allExercises.length) await loadExercises();
+                const plan = await apiRequest(`/plans/${planId}`);
+
+                editingPlanId = planId;
+                document.getElementById('plan-modal-title').textContent = 'تعديل الخطة';
+                document.getElementById('plan-name').value = plan.name || '';
+                document.getElementById('plan-description').value = plan.description || '';
+
+                // تعبئة البيانات المتقدمة والجدولة
+                document.querySelectorAll('.day-checkbox').forEach(box=>box.checked=false);
+                document.getElementById('workout-days-count').value=3;
+                document.getElementById('rest-days-count').value=1;
+                if(plan.schedules && plan.schedules.length > 0) {
+                    const sched = plan.schedules[0];
+                    document.getElementById('schedule-type').value = sched.schedule_type || 'none';
+                    if(sched.schedule_type === 'interval') {
+                        document.getElementById('workout-days-count').value=sched.workout_days;
+                        document.getElementById('rest-days-count').value=sched.rest_days;
+                    }
+                    if(sched.schedule_type === 'weekly' && sched.days_of_week) {
+                        sched.days_of_week.forEach(d => {
+                            const chk = document.getElementById(`day-${d}`);
+                            if(chk) chk.checked = true;
+                        });
+                    }
+                } else {
+                    document.getElementById('schedule-type').value = 'none';
+                }
+                toggleScheduleOptions();
+
+                formExercises = (plan.exercises || []).map((ex, i) => ({
+                    exercise_id: ex.exercise_id,
+                    exercise_name: ex.exercise_name,
+                    alternative_exercise_id: ex.alternative_exercise_id || null,
+                    alternative_exercise_name: ex.alternative_exercise_name || null,
+                    order_index: i,
+                    target_sets: ex.target_sets,
+                    target_reps: ex.target_reps,
+                    target_weight_mode: ex.target_weight_mode,
+                    fixed_weight: ex.fixed_weight,
+                }));
+                renderFormExercises();
+
+                document.getElementById('create-plan-modal').style.display = 'flex';
+                bindWeightModeListener();
             } catch(e) {
-                showSnackbar(e.message, 'error');
+                showSnackbar(`تعذر تحميل الخطة: ${e.message}`, 'error');
             }
         }
 
-        // ====== مودال إنشاء خطة ======
-        function showCreatePlanModal() {
-            document.getElementById('create-plan-modal').style.display = 'flex';
-            formExercises = [];
-            renderFormExercises();
-            if (!allExercises.length) loadExercises();
-            populateSelects();
-            document.getElementById('form-weight-mode').addEventListener('change', function() {
+        function bindWeightModeListener() {
+            const modeSelect = document.getElementById('form-weight-mode');
+            modeSelect.onchange = function() {
                 document.getElementById('fixed-weight-label').style.display = this.value === 'FIXED' ? 'inline' : 'none';
-            });
+            };
         }
 
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+            editingPlanId = null;
+        }
 
         function addExerciseToForm() {
             const select = document.getElementById('add-exercise-select');
+            const altSelect = document.getElementById('add-alt-exercise-select');
             const exerciseId = select.value;
-            if (!exerciseId) { showSnackbar('اختر تمريناً', 'error'); return; }
+            if (!exerciseId) { showSnackbar('اختر تمريناً أساسياً', 'error'); return; }
+
             const exerciseName = select.options[select.selectedIndex].text;
+            const altId = altSelect.value || null;
+            const altName = altId ? altSelect.options[altSelect.selectedIndex].text : null;
+
             const targetSets = parseInt(document.getElementById('form-target-sets').value) || 3;
             const targetReps = parseInt(document.getElementById('form-target-reps').value) || null;
             const weightMode = document.getElementById('form-weight-mode').value;
             const fixedWeight = weightMode === 'FIXED' ? parseFloat(document.getElementById('form-fixed-weight').value) || null : null;
 
-            if (formExercises.some(e => e.exercise_id === exerciseId)) {
-                showSnackbar('التمرين مضاف مسبقاً', 'error');
-                return;
-            }
             formExercises.push({
                 exercise_id: exerciseId,
                 exercise_name: exerciseName,
+                alternative_exercise_id: altId,
+                alternative_exercise_name: altName,
                 order_index: formExercises.length,
                 target_sets: targetSets,
                 target_reps: targetReps,
@@ -215,6 +410,7 @@
             });
             renderFormExercises();
             select.value = '';
+            altSelect.value = '';
             showSnackbar(`✅ أضيف ${exerciseName}`);
         }
 
@@ -235,24 +431,46 @@
                 const div = document.createElement('div');
                 div.className = 'exercise-item';
                 div.innerHTML = `
-                    <span><span class="order-badge">${i+1}</span> ${ex.exercise_name} (${ex.target_sets} مجموعات${ex.target_reps ? ` × ${ex.target_reps}` : ''})</span>
-                    <button class="btn-danger btn-small" onclick="removeFormExercise(${i})">✕</button>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <span class="order-badge">${i+1}</span>
+                            <strong>${ex.exercise_name}</strong> 
+                            <span class="text-muted">(${ex.target_sets} مجموعات)</span>
+                            ${ex.alternative_exercise_name ? `<div style="margin-top:2px;"><span class="alt-badge">بديل: ${ex.alternative_exercise_name}</span></div>` : ''}
+                        </div>
+                        <button class="btn-danger btn-small" type="button" onclick="removeFormExercise(${i})">✕</button>
+                    </div>
                 `;
                 container.appendChild(div);
             });
         }
 
-        async function createPlan(e) {
+        async function submitPlanForm(e) {
             e.preventDefault();
             const name = document.getElementById('plan-name').value.trim();
             if (!name) { showSnackbar('أدخل اسم الخطة', 'error'); return; }
             if (!formExercises.length) { showSnackbar('أضف تمريناً واحداً على الأقل', 'error'); return; }
 
+            const schedType = document.getElementById('schedule-type').value;
+            let daysOfWeek = [];
+            if (schedType === 'weekly') {
+                document.querySelectorAll('#weekly-days-group input:checked').forEach(cb => {
+                    daysOfWeek.push(parseInt(cb.value));
+                });
+            }
+
             const payload = {
                 name,
                 description: document.getElementById('plan-description').value.trim() || null,
+                schedules: schedType !== 'none' ? [{
+                    schedule_type: schedType,
+                    days_of_week: daysOfWeek,
+                    workout_days: schedType === 'interval' ? parseInt(document.getElementById('workout-days-count').value) : null,
+                    rest_days: schedType === 'interval' ? parseInt(document.getElementById('rest-days-count').value) : null
+                }] : [],
                 exercises: formExercises.map(ex => ({
                     exercise_id: ex.exercise_id,
+                    alternative_exercise_id: ex.alternative_exercise_id,
                     order_index: ex.order_index,
                     target_sets: ex.target_sets,
                     target_reps: ex.target_reps,
@@ -262,22 +480,146 @@
             };
 
             try {
-                await apiRequest('/plans', { method: 'POST', body: JSON.stringify(payload) });
-                showSnackbar('✅ تم إنشاء الخطة');
+                if (editingPlanId) {
+                    await apiRequest(`/plans/${editingPlanId}`, { method: 'PUT', body: JSON.stringify(payload) });
+                    showSnackbar('✅ تم حفظ التعديلات');
+                } else {
+                    await apiRequest('/plans', { method: 'POST', body: JSON.stringify(payload) });
+                    showSnackbar('✅ تم إنشاء الخطة');
+                }
                 closeModal('create-plan-modal');
                 loadPlans();
-                document.getElementById('create-plan-form').reset();
-                formExercises = [];
-                renderFormExercises();
             } catch(e) {
                 showSnackbar(e.message, 'error');
             }
         }
 
-        // تحميل أولي
+
+        // =====================================================
+        // تقييم الخطة (Evaluation)
+        // =====================================================
+        const MUSCLE_LABELS = {
+            'group.chest': 'الصدر',
+            'group.back': 'الظهر',
+            'group.shoulders': 'الأكتاف',
+            'group.legs': 'الأرجل',
+            'muscle.calves': 'البطات',
+            'muscle.abs': 'البطن',
+            'muscle.forearms': 'الساعدين',
+            'muscle.adductors': 'المُقربات',
+        };
+
+        function muscleLabel(id) {
+            return MUSCLE_LABELS[id] || id.replace('group.', '').replace('muscle.', '');
+        }
+
+        function evalBadge(status) {
+            if (status === 'ok') return '<span class="eval-badge-ok">✓ مثالي</span>';
+            if (status === 'below_minimum') return '<span class="eval-badge-low">↓ أقل من المطلوب</span>';
+            if (status === 'above_maximum') return '<span class="eval-badge-high">↑ أعلى من المطلوب</span>';
+            return '';
+        }
+
+        function evalRows(items) {
+            if (!items || !items.length) return '<div style="padding:14px; color:#9ca3af;">لا توجد بيانات</div>';
+            return items.map(m => `
+                <div class="eval-row">
+                    <div>
+                        <div class="eval-muscle-name">${muscleLabel(m.id)}</div>
+                        <div class="eval-range">الموصى به: ${m.recommended_range.low}–${m.recommended_range.high} مجموعة/أسبوع</div>
+                    </div>
+                    <div style="text-align: left;">
+                        <div class="eval-sets">${m.weekly_sets} مجموعة</div>
+                        ${evalBadge(m.status)}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function evaluatePlan(planId) {
+            const modal = document.getElementById('eval-modal');
+            const body = document.getElementById('eval-modal-body');
+            const title = document.getElementById('eval-modal-title');
+
+            title.textContent = '📊 تقييم الخطة';
+            body.innerHTML = '<p class="text-muted" style="text-align:center; padding: 20px;">⏳ جاري التحليل...</p>';
+            modal.style.display = 'flex';
+
+            try {
+                const data = await apiRequest(`/evaluate-plan/${planId}`);
+                renderEvaluation(data);
+            } catch(e) {
+                body.innerHTML = `<div style="padding: 20px; text-align: center; color: #dc2626;">تعذر تحميل التقييم: ${e.message}</div>`;
+            }
+        }
+
+        function renderEvaluation(data) {
+            const body = document.getElementById('eval-modal-body');
+            const title = document.getElementById('eval-modal-title');
+
+            title.textContent = `📊 تقييم: ${data.plan_name || 'الخطة'}`;
+
+            const statusMap = {
+                'PASS':    { label: '✅ ممتاز',  cls: 'eval-status-pass',    msg: 'برنامجك متوازن ويغطي كل العضلات الرئيسية.' },
+                'WARNING': { label: '⚠️ تحذير', cls: 'eval-status-warning', msg: 'فيه عضلات خارج النطاق الموصى به — يستاهل المراجعة.' },
+                'FAIL':    { label: '🚨 يحتاج إصلاح', cls: 'eval-status-fail', msg: 'عضلات رئيسية مهملة! لازم تعديل البرنامج.' },
+            };
+            const status = statusMap[data.overall_status] || statusMap['WARNING'];
+
+            const goalLabels = {
+                'HYPERTROPHY': 'تضخيم',
+                'STRENGTH': 'قوة',
+                'FAT_LOSS': 'حرق دهون',
+                'GENERAL_FITNESS': 'لياقة عامة',
+            };
+
+            const unresolvedHtml = (data.unresolved_exercises && data.unresolved_exercises.length)
+                ? `<div class="eval-section">
+                    <h4>⚠️ تمارين غير مربوطة بقاعدة المعرفة:</h4>
+                    <div class="eval-section-box" style="padding: 10px 14px;">
+                        ${data.unresolved_exercises.map(n => `<div style="font-size: 0.85rem; color: #92400e; padding: 2px 0;">• ${n}</div>`).join('')}
+                    </div>
+                  </div>`
+                : '';
+
+            body.innerHTML = `
+                <div class="eval-summary">
+                    <div>
+                        <strong style="font-size: 1.05rem;">${data.plan_name || 'الخطة'}</strong>
+                        <div style="font-size: 0.8rem; color: #6b7280; margin-top: 4px;">
+                            الهدف: ${goalLabels[data.goal] || data.goal} • عدد الأيام: ${data.days_count}
+                        </div>
+                    </div>
+                    <span class="${status.cls}">${status.label}</span>
+                </div>
+
+                <p style="font-size: 0.88rem; color: #4b5563; margin: 0 0 6px 0;">${status.msg}</p>
+
+                <div class="eval-section">
+                    <h4>🎯 العضلات الرئيسية</h4>
+                    <div class="eval-section-box">${evalRows(data.major_muscles)}</div>
+                </div>
+
+                ${data.optional_muscles && data.optional_muscles.length ? `
+                <div class="eval-section">
+                    <h4>📌 العضلات الثانوية (اختيارية)</h4>
+                    <div class="eval-section-box">${evalRows(data.optional_muscles)}</div>
+                </div>` : ''}
+
+                ${unresolvedHtml}
+
+                <div style="margin-top: 20px; padding: 12px; background: #eff6ff; border-radius: 8px; font-size: 0.8rem; color: #1e40af;">
+                    💡 <strong>ملاحظة:</strong> التقييم يعتمد على حجم البرنامج المُخطّط (Sets/Week) مقارنة بالمعايير العلمية (MEV: الحد الأدنى، MRV: الحد الأقصى).
+                </div>
+
+                <button class="btn-secondary" style="width: 100%; margin-top: 16px;" onclick="closeModal('eval-modal')">إغلاق</button>
+            `;
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             loadExercises().then(() => loadPlans());
         });
     </script>
+<script src="/static/plan-review.js?v=4"></script>
 </body>
 </html>

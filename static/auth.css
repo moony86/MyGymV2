@@ -1,0 +1,9 @@
+.auth-page{margin:0;background:#f2f4ef;color:#243d30;font:15px/1.8 Tahoma,Arial,sans-serif;min-height:100vh;display:grid;place-items:center;padding:20px;box-sizing:border-box}.auth-card{background:#fff;max-width:470px;width:100%;padding:30px;border-radius:18px;border:1px solid #dce5d8;box-sizing:border-box}.auth-wide{max-width:760px}.auth-label{font-size:12px;color:#5e7965}h1{font-size:29px}.auth-card label{display:block;margin:18px 0}.auth-card input,.auth-card select{display:block;width:100%;padding:12px;margin-top:7px;border:1px solid #b5c8b7;border-radius:8px;font:inherit;box-sizing:border-box}.auth-card button{background:#285a3c;color:white;border:0;padding:12px 20px;border-radius:8px;font:inherit;cursor:pointer}.auth-card button:disabled{opacity:.6}.auth-card small{display:block;color:#667c6b;font-size:11px}.auth-card a{color:#285a3c}.auth-card [hidden]{display:none}#message{white-space:pre-wrap;font-size:13px}.mygym-account-bar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;background:#eaf0e4;color:#264c35;padding:9px 15px;font:12px/1.8 Tahoma,Arial,sans-serif}.mygym-account-bar div{display:flex;gap:14px}.mygym-account-bar a,.mygym-account-bar button{color:#264c35;font:inherit;background:none;border:0;cursor:pointer;text-decoration:underline}.auth-card :focus-visible{outline:3px solid #a88337;outline-offset:2px}
+.auth-page{display:block}.auth-page .auth-card{margin:40px auto}.auth-page .mygym-account-bar{max-width:760px;margin:0 auto;border-radius:8px}
+
+/* Keep native hidden state effective despite the app's custom button styles. */
+[hidden]{display:none!important}
+.container>header{flex-wrap:wrap}
+.container>header>.profile-controls{flex-basis:100%;min-width:0;flex-wrap:wrap}
+.profile-controls select{min-width:0;max-width:100%}
+.profile-controls button{max-width:100%}
