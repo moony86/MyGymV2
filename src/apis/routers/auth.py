@@ -5,9 +5,10 @@ from collections import defaultdict, deque
 from pathlib import Path
 import uuid
 from fastapi import APIRouter, HTTPException, Request, Response
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel, Field
 from src.security import auth_store as store
+from src.security.session_cookies import set_session_cookies
 from src.infrastructure.db.connection import SessionLocal
 from src.infrastructure.db.models import ProfileTable, DEFAULT_PROFILE_ID
 
@@ -20,6 +21,7 @@ ROOT = Path(__file__).resolve().parents[3]
 class Login(BaseModel):
     username: str = Field(min_length=1,max_length=80)
     password: str = Field(min_length=1,max_length=128)
+    remember: bool = False
 class Setup(Login):
     setup_key: str = Field(min_length=1,max_length=100)
 class Account(Login):
@@ -53,15 +55,16 @@ def require_account(request, admin=False):
         raise HTTPException(403,'Administrator access required')
     return account
 
-def signed_in(response, profile_id):
-    token, csrf = store.new_session(profile_id)
-    response.set_cookie('mygym_session',token,max_age=store.TTL,httponly=True,secure=True,samesite='strict',path='/')
-    response.set_cookie('mygym_csrf',csrf,max_age=store.TTL,httponly=False,secure=True,samesite='strict',path='/')
+def signed_in(response, profile_id, remember=False):
+    token, csrf = store.new_session(profile_id,remember=remember)
+    set_session_cookies(response,token,csrf,store.REMEMBER_TTL if remember else store.TTL)
     response.headers['Cache-Control']='no-store'
     return {'profile_id':profile_id,'csrf':csrf}
 
 @router.get('/login',include_in_schema=False)
-def login_page():
+def login_page(request: Request):
+    if store.session(request.cookies.get('mygym_session')):
+        return RedirectResponse('/',status_code=303,headers={'Cache-Control':'no-store'})
     return FileResponse(ROOT/'templates/login.html',headers={'Cache-Control':'no-store'})
 
 @router.get('/accounts',include_in_schema=False)
@@ -85,7 +88,7 @@ def setup(payload: Setup,request: Request,response: Response):
         store.save_account(DEFAULT_PROFILE_ID,payload.username,payload.password,bootstrap=payload.setup_key)
     except (ValueError,sqlite3.IntegrityError) as exc:
         raise HTTPException(400,str(exc))
-    return signed_in(response,DEFAULT_PROFILE_ID)
+    return signed_in(response,DEFAULT_PROFILE_ID,payload.remember)
 
 @router.post('/api/auth/login')
 def login(payload: Login,request: Request,response: Response):
@@ -94,18 +97,25 @@ def login(payload: Login,request: Request,response: Response):
     valid = store.verify(payload.password,row['password_hash'] if row else _dummy)
     if not row or not valid:
         raise HTTPException(401,'Incorrect username or password')
-    return signed_in(response,row['profile_id'])
+    return signed_in(response,row['profile_id'],payload.remember)
 
 @router.get('/api/auth/me')
 def me(request: Request):
     account = require_account(request)
-    return {key:account[key] for key in ['profile_id','username','is_admin']}
+    return {**{key:account[key] for key in ['profile_id','username','is_admin']},'remembered_device':account.get('absolute_expires') is not None}
+
+@router.post('/api/auth/remember-device')
+def remember_device(request: Request,response: Response):
+    account=require_account(request)
+    result=signed_in(response,account['profile_id'],remember=True)
+    store.revoke(request.cookies.get('mygym_session'))
+    return result
 
 @router.post('/api/auth/logout')
 def logout(request: Request,response: Response):
     store.revoke(request.cookies.get('mygym_session'))
-    response.delete_cookie('mygym_session',path='/',secure=True,samesite='strict')
-    response.delete_cookie('mygym_csrf',path='/',secure=True,samesite='strict')
+    response.delete_cookie('mygym_session',path='/',secure=True,samesite='lax')
+    response.delete_cookie('mygym_csrf',path='/',secure=True,samesite='lax')
     return {'ok':True}
 
 @router.get('/api/auth/accounts')
@@ -149,7 +159,7 @@ def change_password(payload: ChangePassword,request: Request,response: Response)
     if not store.verify(payload.old_password,row['password_hash']):
         raise HTTPException(400,'Current password is incorrect')
     store.save_account(account['profile_id'],account['username'],payload.password)
-    return signed_in(response,account['profile_id'])
+    return signed_in(response,account['profile_id'],account.get('absolute_expires') is not None)
 
 @router.get('/account',include_in_schema=False)
 def own_account_page(request: Request):

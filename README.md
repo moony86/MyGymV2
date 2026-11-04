@@ -47,6 +47,14 @@ Before deploying, save the current application release, service configuration, a
 
 ## Media
 
-Two exercise videos are included with individual attribution and CC BY-SA 4.0 license links in `static/exercise-media.json` and `static/media-attribution.html`. The videos are third-party works; their license does not grant a license to unrelated application code. Visual variant matching is not a professional biomechanics certification. Do not add third-party videos without checking reuse rights and exercise/equipment correspondence.
+The exercise library contains 12 images and 6 videos across 9 movement types, with individual attribution and Creative Commons license links in `static/exercise-library.json` and `static/media-attribution.html`. Four newly added videos are compressed H.264 derivatives with changes recorded. Media are selected only through reviewed name-and-apparatus bindings; imported variant IDs alone do not choose a visual. Third-party media licenses do not grant a license to unrelated application code. Visual matching is not a professional biomechanics certification.
+
+## Remembering a personal device
+
+Select “تذكرني على هذا الجهاز” at login, or enable it on `/account` while already signed in. A remembered session lasts 90 days and renews with use, with a 180-day absolute limit. Existing ordinary sessions retain their original seven-day lifetime until explicitly replaced. Session cookies remain Secure and HttpOnly. SameSite=Lax permits top-level GET launches from external shortcuts; all mutations retain origin and session-bound CSRF checks. Password changes revoke existing devices; logout revokes the current token. No password is saved in browser storage.
+
+Exercise help, visual media and calculation notes are expandable. Photos load lazily and videos play on demand; the service worker leaves video/range requests to the HTTP server.
 
 See [release notes](docs/releases/2026-11-04-restoration.md).
+
+See [device, interface and media update](docs/releases/2026-11-04-device-ux.md).

@@ -1,7 +1,7 @@
-const CACHE_NAME = 'mygym-shell-v6';
+const CACHE_NAME = 'mygym-shell-v7';
 const APP_SHELL = [
     '/static/app.js?v=7', '/static/style.css?v=2',
-    '/static/auth.js?v=3', '/static/auth.css?v=2',
+    '/static/auth.js?v=4', '/static/auth.css?v=3',
     '/static/manifest.json', '/static/icon.png', '/static/icon-192.png'
 ];
 self.addEventListener('install', event => {
@@ -17,6 +17,7 @@ self.addEventListener('fetch', event => {
     const request = event.request;
     const url = new URL(request.url);
     if (request.method !== 'GET' || url.origin !== self.location.origin ||
+        request.headers.has('range') || request.destination === 'video' || url.pathname.endsWith('.mp4') ||
         url.pathname.startsWith('/api/') || ['/login','/accounts','/account'].includes(url.pathname)) return;
     if (request.mode === 'navigate') {
         event.respondWith(fetch(request).then(response => {

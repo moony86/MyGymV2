@@ -11,6 +11,8 @@ ENABLED = os.getenv('MYGYM_AUTH_ENABLED', '1') != '0'
 DB = Path(os.getenv('MYGYM_AUTH_DB', str(Path(os.getenv('DB_PATH', './gym_tracker.db')).resolve().with_name('mygym_auth.sqlite3'))))
 BOOTSTRAP = Path(os.getenv('MYGYM_BOOTSTRAP_FILE', str(DB.parent / 'secrets/mygym-bootstrap.txt')))
 TTL = 7 * 86400
+REMEMBER_TTL = 90 * 86400
+REMEMBER_LIMIT = 180 * 86400
 
 def connect():
     db = sqlite3.connect(DB, timeout=10)
@@ -27,6 +29,8 @@ def initialize():
         CREATE TABLE IF NOT EXISTS sessions (
             token_hash TEXT PRIMARY KEY, profile_id TEXT NOT NULL,
             csrf TEXT NOT NULL, expires REAL NOT NULL);
+        CREATE TABLE IF NOT EXISTS remembered_sessions (
+            token_hash TEXT PRIMARY KEY, absolute_expires REAL NOT NULL);
         ''')
     DB.chmod(0o600)
     if not has_accounts():
@@ -85,26 +89,59 @@ def save_account(profile_id, username, password, bootstrap=None):
         admin = 1 if bootstrap is not None else (existing['is_admin'] if existing else 0)
         db.execute('INSERT INTO accounts(profile_id,username,password_hash,is_admin) VALUES(?,?,?,?) ON CONFLICT(profile_id) DO UPDATE SET username=excluded.username,password_hash=excluded.password_hash', (profile_id,username,encoded,admin))
         db.execute('DELETE FROM sessions WHERE profile_id=?', (profile_id,))
+        db.execute('DELETE FROM remembered_sessions WHERE token_hash NOT IN (SELECT token_hash FROM sessions)')
     if bootstrap is not None:
         BOOTSTRAP.unlink(missing_ok=True)
 
-def new_session(profile_id):
+def new_session(profile_id, remember=False):
     token, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(24)
+    now = time.time()
+    digest = hashlib.sha256(token.encode()).hexdigest()
     with connect() as db:
-        db.execute('DELETE FROM sessions WHERE expires<=?', (time.time(),))
-        db.execute('INSERT INTO sessions VALUES(?,?,?,?)', (hashlib.sha256(token.encode()).hexdigest(),profile_id,csrf,time.time()+TTL))
+        db.execute('DELETE FROM sessions WHERE expires<=?', (now,))
+        db.execute('DELETE FROM remembered_sessions WHERE token_hash NOT IN (SELECT token_hash FROM sessions)')
+        db.execute('INSERT INTO sessions VALUES(?,?,?,?)', (digest,profile_id,csrf,now+(REMEMBER_TTL if remember else TTL)))
+        if remember:
+            db.execute('INSERT INTO remembered_sessions VALUES(?,?)', (digest,now+REMEMBER_LIMIT))
     return token, csrf
+
 
 def session(token):
     if not token or len(token) > 200:
         return None
     with connect() as db:
-        row = db.execute('SELECT a.profile_id,a.username,a.is_admin,s.csrf FROM sessions s JOIN accounts a ON s.profile_id=a.profile_id WHERE token_hash=? AND expires>?', (hashlib.sha256(token.encode()).hexdigest(),time.time())).fetchone()
+        now = time.time()
+        row = db.execute("""SELECT a.profile_id,a.username,a.is_admin,s.csrf,s.expires,r.absolute_expires
+            FROM sessions s JOIN accounts a ON s.profile_id=a.profile_id
+            LEFT JOIN remembered_sessions r ON r.token_hash=s.token_hash
+            WHERE s.token_hash=? AND s.expires>? AND (r.absolute_expires IS NULL OR r.absolute_expires>?)""",
+            (hashlib.sha256(token.encode()).hexdigest(),now,now)).fetchone()
         return dict(row) if row else None
+
+
+def renew_remembered(token, account):
+    """Renew at most daily; never revive an expired or revoked session."""
+    now = time.time()
+    absolute = account.get('absolute_expires')
+    if absolute is None or absolute <= now or account['expires'] >= now+REMEMBER_TTL-86400:
+        return None
+    expiry = min(now+REMEMBER_TTL,absolute)
+    if expiry <= account['expires']:
+        return None
+    with connect() as db:
+        updated = db.execute("""UPDATE sessions SET expires=? WHERE token_hash=? AND expires>?
+            AND expires<? AND EXISTS (SELECT 1 FROM remembered_sessions r
+            WHERE r.token_hash=sessions.token_hash AND r.absolute_expires>=?)""",
+            (expiry,hashlib.sha256(token.encode()).hexdigest(),now,expiry,expiry))
+        return expiry if updated.rowcount else None
+
 
 def revoke(token):
     with connect() as db:
-        db.execute('DELETE FROM sessions WHERE token_hash=?', (hashlib.sha256((token or '').encode()).hexdigest(),))
+        digest = hashlib.sha256((token or '').encode()).hexdigest()
+        db.execute('DELETE FROM sessions WHERE token_hash=?', (digest,))
+        db.execute('DELETE FROM remembered_sessions WHERE token_hash=?', (digest,))
+
 
 if ENABLED:
     initialize()
