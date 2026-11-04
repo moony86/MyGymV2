@@ -1,169 +1,220 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 import os
 import uuid6
+import time
+from collections import defaultdict
 
 from src.apis.routers.sessions import router as sessions_router
 from src.apis.routers.exercises import router as exercises_router
+from src.apis.routers.profile import router as profile_router
 from src.infrastructure.db.models import Base, ExerciseTable
 from src.infrastructure.db.connection import engine, SessionLocal
 
 from src.apis.routers.planner import router as planner_router
-# أضف هذه الاستيرادات في الأعلى
+from src.apis.routers.analytics import router as analytics_router
 from alembic.config import Config
 from alembic import command
+from src.apis.deps import get_knowledge_provider
+from src.domain.profile_context import set_current_profile_id, reset_current_profile_id, DEFAULT_PROFILE_ID
 
-
-DEFAULT_EXERCISES = [
-    # Chest
-    ("Chest Press (Machine)", "chest", "machine"),
-    ("Incline Chest Press (Machine)", "chest", "machine"),
-    ("Bench Press (Barbell)", "chest", "barbell"),
-    ("Pec Deck Fly", "chest", "machine"),
-    ("Cable Fly", "chest", "cable"),
-
-    # Back
-    ("Lat Pulldown", "back", "cable"),
-    ("Seated Cable Row", "back", "cable"),
-    ("Chest Supported Row", "back", "machine"),
-    ("Upper Back Row", "back", "machine"),  # أضف هذا السطر
-    ("Pull Up", "back", "bodyweight"),
-    ("Barbell Row", "back", "barbell"),
-
-    # Shoulders
-    ("Shoulder Press (Machine)", "shoulders", "machine"),
-    ("Overhead Press (Barbell)", "shoulders", "barbell"),
-    ("Lateral Raise", "shoulders", "dumbbell"),
-    ("Rear Delt Fly", "shoulders", "machine"),
-
-    # Legs
-    ("Leg Press", "legs", "machine"),
-    ("Hack Squat", "legs", "machine"),
-    ("Squat", "legs", "barbell"),
-    ("Leg Extension", "legs", "machine"),
-    ("Leg Curl", "hamstrings", "machine"),
-    ("Romanian Deadlift", "hamstrings", "barbell"),
-    ("Calf Raise", "calves", "machine"),
-
-    # Arms
-    ("Biceps Curl", "biceps", "dumbbell"),
-    ("Hammer Curl", "biceps", "dumbbell"),
-    ("Preacher Curl (Machine)", "biceps", "machine"),
-    ("Triceps Pushdown", "triceps", "cable"),
-    ("Triceps Extension (Machine)", "triceps", "machine"),
-    ("Skull Crusher", "triceps", "barbell"),
-]
 
 def run_migrations():
     """تشغيل الترحيلات تلقائياً عند بدء التشغيل"""
-    # المسار الخاص بملف alembic.ini في مشروعك
     alembic_cfg = Config("alembic.ini")
     try:
         command.upgrade(alembic_cfg, "head")
         print("Database migrations applied successfully.")
     except Exception as e:
-        print(f"Error applying migrations: {e}")
-
-# استدعِ الدالة قبل تهيئة FastAPI
-
-def seed_default_exercises():
-    from sqlalchemy.orm import Session as DbSession
-    from uuid6 import uuid7
-    db = SessionLocal()
-    try:
-        existing_names = {
-        row.name
-            for row in db.query(ExerciseTable.name).all()
-        }
-        added = 0
-
-        for name, primary_muscle, equipment in DEFAULT_EXERCISES:
-            if name in existing_names:
-                continue
-
-            db.add(
-                ExerciseTable(
-                    id=str(uuid7()),
-                    name=name,
-                    primary_muscle=primary_muscle,
-                    equipment=equipment,
-                    is_active=True,
-                )
-            )
-
-            added +=1
-
-        db.commit()
-
-        if added:
-            print(f"Added {added} new exercises.")
-        else:
-            print("Exercise library is already up to date.")
-    except Exception as e:
-        db.rollback()
-        print(f"Seed failed: {e}")
-    finally:
-        db.close()
-
+        raise RuntimeError(f"Database migrations failed: {e}") from e
 
 
 if os.getenv("PYTEST_CURRENT_TEST") is None:
     run_migrations()
-    seed_default_exercises() # تظل موجودة لأنها تملأ البيانات (Seeding) وليس الهيكلية
 
 
-#Base.metadata.create_all(engine)
+# ============================================================
+# Environment
+# ============================================================
+ENV = os.getenv("ENV", "development")
+IS_PROD = ENV == "production"
 
-#def upgrade_database_for_planner():
-#    from sqlalchemy import inspect
-#    inspector = inspect(engine)
-#    if "workout_plans" not in inspector.get_table_names():
-#        print("Creating planner tables...")
-#        Base.metadata.create_all(engine)
-#        print("Planner tables created.")
-#    else:
-#        print("Planner tables already exist.")
-
-#upgrade_database_for_planner()
-
-
+# ✅ إخفاء docs في production
 app = FastAPI(
     title="MyGym Pro Core",
     description="Minimal workout tracking API for dogfooding",
-    version="0.1.0"
+    version="0.1.0",
+    docs_url=None if IS_PROD else "/docs",
+    redoc_url=None if IS_PROD else "/redoc",
+    openapi_url=None if IS_PROD else "/openapi.json",
 )
 
+
+# ============================================================
+# Rate Limiting (in-memory)
+# ============================================================
+RATE_LIMIT = 500        # طلبات (رُفع من 100 لتجنب 429 مع N+1)
+RATE_WINDOW = 60        # في 60 ثانية
+request_log = defaultdict(list)
+
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    """
+    ✅ Rate limiting: 100 طلب/دقيقة لكل IP
+    """
+    ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    
+    # نحتفظ بطلبات آخر 60 ثانية فقط
+    request_log[ip] = [t for t in request_log[ip] if now - t < RATE_WINDOW]
+    
+    if len(request_log[ip]) >= RATE_LIMIT:
+        return JSONResponse(
+            status_code=429,
+            content={
+                "detail": "Too many requests. Try again later.",
+                "retry_after": RATE_WINDOW
+            },
+            headers={"Retry-After": str(RATE_WINDOW)}
+        )
+    
+    request_log[ip].append(now)
+    return await call_next(request)
+
+
+# ============================================================
+# Security Headers
+# ============================================================
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    """
+    ✅ Security headers لكل response
+    """
+    response = await call_next(request)
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://unpkg.com; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "img-src 'self' data:; "
+        "font-src 'self' https://fonts.gstatic.com;"
+        "connect-src 'self'"
+    )
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    return response
+
+
+# ============================================================
+# Profile Context (الموجود)
+# ============================================================
+@app.middleware("http")
+async def profile_context_middleware(request, call_next):
+    token = set_current_profile_id(
+        request.headers.get("X-Profile-Id", DEFAULT_PROFILE_ID)
+    )
+    try:
+        return await call_next(request)
+    finally:
+        reset_current_profile_id(token)
+
+
+# ============================================================
+# CORS
+# ============================================================
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=[],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+
+# ============================================================
+# Routers
+# ============================================================
 app.include_router(sessions_router)
 app.include_router(exercises_router)
-
 app.include_router(planner_router)
+app.include_router(analytics_router)
+app.include_router(profile_router)
 
+
+# ============================================================
+# Static files
+# ============================================================
 static_dir = os.path.join(os.path.dirname(__file__), "..", "..", "static")
 if os.path.exists(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
+
+# ============================================================
+# Pages
+# ============================================================
 @app.get("/")
 async def root():
     return FileResponse(os.path.join(os.path.dirname(__file__), "..", "..", "templates", "index.html"))
+
 
 @app.get("/workout")
 async def workout_page():
     return FileResponse(os.path.join(os.path.dirname(__file__), "..", "..", "templates", "workout.html"))
 
+
 @app.get("/plans")
 async def plans_page():
     return FileResponse(os.path.join(os.path.dirname(__file__), "..", "..", "templates", "plans.html"))
-    
+
+
+@app.get("/analytics")
+async def analytics_page():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "..", "..", "templates", "analytics.html"))
+
+@app.get("/manage")
+@app.get("/manage.html")
+async def manage_page():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "..", "..", "templates", "manage.html"))
+
+@app.get("/profile-setup")
+async def profile_setup_page():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "..", "..", "templates", "profile-setup.html"))
+
+
+@app.get("/body-history")
+async def body_history_page():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "..", "..", "templates", "body_history.html"))
+
+
+@app.get("/debug-knowledge")
+async def debug_knowledge():
+    provider = get_knowledge_provider()
+    return {
+        "total_exercises": len(provider.exercises()),
+        "total_muscles": len(provider.muscles()),
+        "total_templates": len(provider.templates()),
+        "status": "Healthy & Validated"
+    }
+
+
+from src.apis.routers.auth import router as auth_router
+from src.security.middleware import install as install_authentication
+app.include_router(auth_router)
+install_authentication(app)
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+from src.apis.routers.coaching import router as coaching_router
+app.include_router(coaching_router)
+
+@app.get("/coach")
+def coaching_page():
+    return FileResponse("templates/coach.html")

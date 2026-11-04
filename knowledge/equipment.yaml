@@ -1,0 +1,212 @@
+version: 1.0
+
+metadata:
+  name: Equipment Library
+  description: >
+    Defines all supported training equipment.
+
+equipment:
+
+# ==========================================================
+# MACHINES
+# ==========================================================
+
+- id: equipment.machine
+
+  name: Selectorized Machine
+
+  category: machine
+
+  beginner_friendly: true
+
+  stability: high
+
+  free_weight: false
+
+# ----------------------------------------------------------
+
+- id: equipment.plate_loaded_machine
+
+  name: Plate Loaded Machine
+
+  category: machine
+
+  beginner_friendly: true
+
+  stability: high
+
+  free_weight: false
+
+# ----------------------------------------------------------
+
+- id: equipment.assisted_machine
+
+  name: Assisted Machine
+
+  category: machine
+
+  beginner_friendly: true
+
+  stability: high
+
+# ----------------------------------------------------------
+
+- id: equipment.smith_machine
+
+  name: Smith Machine
+
+  category: machine
+
+  beginner_friendly: true
+
+  stability: high
+
+# ==========================================================
+# FREE WEIGHTS
+# ==========================================================
+
+- id: equipment.barbell
+
+  name: Barbell
+
+  category: free_weight
+
+  beginner_friendly: false
+
+  stability: low
+
+# ----------------------------------------------------------
+
+- id: equipment.ez_bar
+
+  name: EZ Bar
+
+  category: free_weight
+
+  beginner_friendly: true
+
+  stability: medium
+
+# ----------------------------------------------------------
+
+- id: equipment.dumbbell
+
+  name: Dumbbell
+
+  category: free_weight
+
+  beginner_friendly: true
+
+  stability: medium
+
+# ----------------------------------------------------------
+
+- id: equipment.kettlebell
+
+  name: Kettlebell
+
+  category: free_weight
+
+  beginner_friendly: false
+
+  stability: medium
+
+# ==========================================================
+# CABLE
+# ==========================================================
+
+- id: equipment.cable
+
+  name: Cable
+
+  category: cable
+
+  beginner_friendly: true
+
+  stability: medium
+
+# ==========================================================
+# BODYWEIGHT
+# ==========================================================
+
+- id: equipment.bodyweight
+
+  name: Bodyweight
+
+  category: bodyweight
+
+  beginner_friendly: true
+
+  stability: variable
+
+# ==========================================================
+# BANDS
+# ==========================================================
+
+- id: equipment.resistance_band
+
+  name: Resistance Band
+
+  category: band
+
+  beginner_friendly: true
+
+# ==========================================================
+# BENCHES
+# ==========================================================
+
+- id: equipment.flat_bench
+
+  name: Flat Bench
+
+  category: bench
+
+# ----------------------------------------------------------
+
+- id: equipment.adjustable_bench
+
+  name: Adjustable Bench
+
+  category: bench
+
+# ==========================================================
+# SPECIALIZED
+# ==========================================================
+
+- id: equipment.pull_up_bar
+
+  name: Pull-up Bar
+
+  category: station
+
+# ----------------------------------------------------------
+
+- id: equipment.parallel_bars
+
+  name: Parallel Bars
+
+  category: station
+
+# ----------------------------------------------------------
+
+- id: equipment.hyperextension_bench
+
+  name: Hyperextension Bench
+
+  category: station
+
+# ----------------------------------------------------------
+
+- id: equipment.ab_wheel
+
+  name: Ab Wheel
+
+  category: accessory
+
+# ----------------------------------------------------------
+
+- id: equipment.exercise_ball
+
+  name: Stability Ball
+
+  category: accessory

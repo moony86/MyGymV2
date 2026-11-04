@@ -1,0 +1,26 @@
+{
+  "variant.barbell_bench_press": {
+    "title": "Barbell Bench Press",
+    "local_url": "/static/exercise-media/21.mp4",
+    "source_page": "https://wger.de/api/v2/exerciseinfo/73/",
+    "source_video": "https://wger.de/media/exercise-video/73/2bdb390c-312c-4497-a722-5eed2c823e5a.MOV",
+    "author": "Goulart",
+    "license": "CC-BY-SA 4",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0/deed.en",
+    "changes": "Original file; no edits",
+    "sha256": "f7ef457d364ed24fc1dff86a4c40f9801f42213300e9904b442d96430b869ecc",
+    "review_status": "previously_visually_checked_for_variant_match"
+  },
+  "variant.dumbbell_bench_press": {
+    "title": "Dumbbell Bench Press",
+    "local_url": "/static/exercise-media/17.mp4",
+    "source_page": "https://wger.de/api/v2/exerciseinfo/75/",
+    "source_video": "https://wger.de/media/exercise-video/75/080c799b-8afd-4130-8d72-9cef0cd79f54.MOV",
+    "author": "Goulart",
+    "license": "CC-BY-SA 4",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0/deed.en",
+    "changes": "Original file; no edits",
+    "sha256": "d96fa783d10b476965e926a2c88f4b6d69da5f9e91cd7656fbafadb001981afa",
+    "review_status": "previously_visually_checked_for_variant_match"
+  }
+}

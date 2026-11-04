@@ -1,0 +1,399 @@
+version: 1.0
+
+metadata:
+  name: Exercise Variants
+  description: >
+    Concrete implementations of abstract exercises.
+
+variants:
+
+# ==========================================================
+# HORIZONTAL PRESS
+# ==========================================================
+
+- id: variant.machine_chest_press
+
+  exercise: exercise.horizontal_press
+
+  equipment: equipment.machine
+
+  display_name: Machine Chest Press
+
+  difficulty: beginner
+
+  stability: high
+
+  machine_required: true
+
+  unilateral: false
+
+# ----------------------------------------------------------
+
+- id: variant.barbell_bench_press
+
+  exercise: exercise.horizontal_press
+
+  equipment: equipment.barbell
+
+  display_name: Barbell Bench Press
+
+  difficulty: intermediate
+
+  stability: low
+
+  machine_required: false
+
+  unilateral: false
+
+# ----------------------------------------------------------
+
+- id: variant.dumbbell_bench_press
+
+  exercise: exercise.horizontal_press
+
+  equipment: equipment.dumbbell
+
+  display_name: Dumbbell Bench Press
+
+  difficulty: intermediate
+
+  stability: medium
+
+  machine_required: false
+
+  unilateral: false
+
+# ----------------------------------------------------------
+
+- id: variant.smith_bench_press
+
+  exercise: exercise.horizontal_press
+
+  equipment: equipment.smith_machine
+
+  display_name: Smith Machine Bench Press
+
+  difficulty: beginner
+
+  stability: high
+
+# ==========================================================
+# INCLINE PRESS
+# ==========================================================
+
+- id: variant.machine_incline_press
+
+  exercise: exercise.incline_press
+
+  equipment: equipment.machine
+
+  display_name: Machine Incline Press
+
+  difficulty: beginner
+
+# ----------------------------------------------------------
+
+- id: variant.barbell_incline_press
+
+  exercise: exercise.incline_press
+
+  equipment: equipment.barbell
+
+  display_name: Incline Barbell Bench Press
+
+  difficulty: intermediate
+
+# ----------------------------------------------------------
+
+- id: variant.dumbbell_incline_press
+
+  exercise: exercise.incline_press
+
+  equipment: equipment.dumbbell
+
+  display_name: Incline Dumbbell Bench Press
+
+  difficulty: beginner
+
+# ==========================================================
+# CHEST FLY
+# ==========================================================
+
+- id: variant.pec_deck
+
+  exercise: exercise.chest_fly
+
+  equipment: equipment.machine
+
+  display_name: Pec Deck
+
+# ----------------------------------------------------------
+
+- id: variant.cable_fly
+
+  exercise: exercise.chest_fly
+
+  equipment: equipment.cable
+
+  display_name: Cable Fly
+
+# ----------------------------------------------------------
+
+- id: variant.dumbbell_fly
+
+  exercise: exercise.chest_fly
+
+  equipment: equipment.dumbbell
+
+  display_name: Dumbbell Fly
+
+# ==========================================================
+# VERTICAL PULL
+# ==========================================================
+
+- id: variant.lat_pulldown
+
+  exercise: exercise.vertical_pull
+
+  equipment: equipment.machine
+
+  display_name: Lat Pulldown
+
+# ----------------------------------------------------------
+
+- id: variant.pull_up
+
+  exercise: exercise.vertical_pull
+
+  equipment: equipment.bodyweight
+
+  display_name: Pull Up
+
+# ----------------------------------------------------------
+
+- id: variant.assisted_pull_up
+
+  exercise: exercise.vertical_pull
+
+  equipment: equipment.assisted_machine
+
+  display_name: Assisted Pull Up
+
+# ==========================================================
+# HORIZONTAL ROW
+# ==========================================================
+
+- id: variant.seated_cable_row
+
+  exercise: exercise.horizontal_row
+
+  equipment: equipment.cable
+
+  display_name: Seated Cable Row
+
+# ----------------------------------------------------------
+
+- id: variant.chest_supported_row
+
+  exercise: exercise.horizontal_row
+
+  equipment: equipment.machine
+
+  display_name: Chest Supported Row
+
+# ----------------------------------------------------------
+
+- id: variant.barbell_row
+
+  exercise: exercise.horizontal_row
+
+  equipment: equipment.barbell
+
+  display_name: Barbell Row
+
+# ----------------------------------------------------------
+
+- id: variant.one_arm_dumbbell_row
+
+  exercise: exercise.horizontal_row
+
+  equipment: equipment.dumbbell
+
+  display_name: One Arm Dumbbell Row
+
+# ==========================================================
+# OVERHEAD PRESS
+# ==========================================================
+
+- id: variant.machine_shoulder_press
+
+  exercise: exercise.overhead_press
+
+  equipment: equipment.machine
+
+  display_name: Shoulder Press Machine
+
+# ----------------------------------------------------------
+
+- id: variant.barbell_overhead_press
+
+  exercise: exercise.overhead_press
+
+  equipment: equipment.barbell
+
+  display_name: Barbell Overhead Press
+
+# ----------------------------------------------------------
+
+- id: variant.dumbbell_overhead_press
+
+  exercise: exercise.overhead_press
+
+  equipment: equipment.dumbbell
+
+  display_name: Dumbbell Shoulder Press
+
+# ==========================================================
+# SQUAT
+# ==========================================================
+
+- id: variant.back_squat
+
+  exercise: exercise.squat
+
+  equipment: equipment.barbell
+
+  display_name: Back Squat
+
+# ----------------------------------------------------------
+
+- id: variant.front_squat
+
+  exercise: exercise.squat
+
+  equipment: equipment.barbell
+
+  display_name: Front Squat
+
+# ----------------------------------------------------------
+
+- id: variant.leg_press
+
+  exercise: exercise.squat
+
+  equipment: equipment.machine
+
+  display_name: Leg Press
+
+# ----------------------------------------------------------
+
+- id: variant.hack_squat
+
+  exercise: exercise.squat
+
+  equipment: equipment.machine
+
+  display_name: Hack Squat
+
+# ==========================================================
+# HIP HINGE
+# ==========================================================
+
+- id: variant.romanian_deadlift
+
+  exercise: exercise.hip_hinge
+
+  equipment: equipment.barbell
+
+  display_name: Romanian Deadlift
+
+# ----------------------------------------------------------
+
+- id: variant.barbell_hip_thrust
+
+  exercise: exercise.hip_hinge
+
+  equipment: equipment.barbell
+
+  display_name: Hip Thrust
+
+# ----------------------------------------------------------
+
+- id: variant.cable_pull_through
+
+  exercise: exercise.hip_hinge
+
+  equipment: equipment.cable
+
+  display_name: Cable Pull Through
+
+# ----------------------------------------------------------
+
+- id: variant.back_extension
+
+  exercise: exercise.hip_hinge
+
+  equipment: equipment.machine
+
+  display_name: Back Extension
+
+
+# ==========================================================
+# ARMS & SHOULDERS ISOLATION
+# ==========================================================
+
+- id: variant.dumbbell_biceps_curl
+  exercise: exercise.biceps_curl
+  equipment: equipment.dumbbell
+  display_name: Dumbbell Biceps Curl
+
+- id: variant.triceps_cable_pushdown
+  exercise: exercise.triceps_extension
+  equipment: equipment.cable
+  display_name: Cable Triceps Pushdown
+
+- id: variant.dumbbell_lateral_raise
+  exercise: exercise.lateral_raise
+  equipment: equipment.dumbbell
+  display_name: Dumbbell Lateral Raise
+
+- id: variant.rear_delt_cable_fly
+  exercise: exercise.rear_delt_fly
+  equipment: equipment.cable
+  display_name: Cable Rear Delt Fly
+
+
+
+# ==========================================================
+# LEGS & CORE ISOLATION
+# ==========================================================
+
+- id: variant.standing_calf_raise
+  exercise: exercise.calf_raise
+  equipment: equipment.machine
+  display_name: Standing Calf Raise
+
+- id: variant.machine_leg_extension
+  exercise: exercise.knee_extension
+  equipment: equipment.machine
+  display_name: Leg Extension Machine
+
+- id: variant.machine_leg_curl
+  exercise: exercise.knee_flexion
+  equipment: equipment.machine
+  display_name: Leg Curl Machine
+
+- id: variant.machine_ab_crunch
+  exercise: exercise.ab_crunch
+  equipment: equipment.machine
+  display_name: Machine Ab Crunch
+
+- id: variant.cable_woodchopper
+  exercise: exercise.oblique_rotation
+  equipment: equipment.cable
+  display_name: Cable Woodchopper
+
+- id: variant.plank
+  exercise: exercise.core_stability
+  equipment: equipment.bodyweight
+  display_name: Plank

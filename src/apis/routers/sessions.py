@@ -1,20 +1,41 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header, Request
 from typing import List, Any
 from decimal import Decimal
+from datetime import datetime, timedelta, timezone
 import uuid
 
 from src.apis.schemas import (
     StartWorkoutRequest, AddSetRequest, FinishWorkoutRequest, UpdateSetRequest,
-    SessionDTO, SetDTO, ActiveSessionDTO, MessageResponse, ExerciseDTO
+    SessionDTO, SetDTO, ActiveSessionDTO, MessageResponse, ExerciseDTO,
+    AddExerciseToSessionRequest, PerformedExerciseDTO
 )
 from src.services.session_service import SessionService
 from src.services.units_service import WeightFormatter
 from src.domain.entities import Set, Session
 from src.domain.enums import SessionStatus, SetType
-from src.infrastructure.db.models import ExerciseTable, SetTable, PerformedExerciseTable
+from src.domain.profile_context import get_current_profile_id
+from src.apis.deps import get_db
+from src.infrastructure.db.models import ExerciseTable, SetTable, PerformedExerciseTable, PlanExerciseTable, SessionTable, ClientOperationTable, DEFAULT_PROFILE_ID
 from src.infrastructure.db.connection import SessionLocal
+from src.queries.metrics_queries import get_muscle_sets_by_week
 
-router = APIRouter(prefix="/api", tags=["workouts"])
+def validate_workout_identifiers(request: Request):
+    for name in ('session_id', 'set_id'):
+        value = request.path_params.get(name)
+        if value is not None:
+            try:
+                uuid.UUID(value)
+            except (ValueError, TypeError, AttributeError):
+                raise HTTPException(status_code=422, detail=f"Invalid {name}")
+    exercise = request.query_params.get('exercise_id')
+    if exercise is not None:
+        try:
+            uuid.UUID(exercise)
+        except (ValueError, TypeError, AttributeError):
+            raise HTTPException(status_code=422, detail="Invalid exercise_id")
+
+
+router = APIRouter(prefix="/api", tags=["workouts"], dependencies=[Depends(validate_workout_identifiers)])
 
 def session_to_dto(session: Session, sets: List[Set], exercise_names: dict = None) -> SessionDTO:
     volume = sum((s.weight * s.reps for s in sets), Decimal("0"))
@@ -44,6 +65,7 @@ def set_to_dto(orm_set, exercise_name: str = "") -> SetDTO:
         weight=orm_set.weight,
         reps=orm_set.reps,
         rpe=orm_set.rpe,
+        rir=orm_set.rir,
         set_type=SetType(orm_set.set_type),
         volume_kg=orm_set.weight * orm_set.reps
     )
@@ -159,6 +181,182 @@ def get_workout_history():
     finally:
         db.close()
 
+
+@router.get("/workouts/progress")
+def get_progress_comparison(exercise_id: str = None):
+    db = SessionLocal()
+    try:
+        service = SessionService(db)
+        sessions = service.get_completed_sessions(limit=100)
+        session_rows = []
+        for session in reversed(sessions):
+            query = (
+                db.query(SetTable, ExerciseTable)
+                .join(PerformedExerciseTable, SetTable.performed_exercise_id == PerformedExerciseTable.id)
+                .join(ExerciseTable, PerformedExerciseTable.exercise_id == ExerciseTable.id)
+                .filter(PerformedExerciseTable.session_id == str(session.id))
+            )
+            if exercise_id:
+                query = query.filter(ExerciseTable.id == exercise_id)
+            rows = query.all()
+            by_exercise = {}
+            for orm_set, exercise in rows:
+                bucket = by_exercise.setdefault(exercise.id, {
+                    "exercise_id": exercise.id,
+                    "exercise_name": exercise.name,
+                    "sets": 0,
+                    "volume": Decimal("0"),
+                    "max_weight": Decimal("0"),
+                    "max_reps": 0,
+                    "rpe_values": [],
+                    "rir_values": [],
+                })
+                bucket["sets"] += 1
+                bucket["volume"] += orm_set.weight * orm_set.reps
+                bucket["max_weight"] = max(bucket["max_weight"], orm_set.weight)
+                bucket["max_reps"] = max(bucket["max_reps"], orm_set.reps)
+                if orm_set.rpe is not None:
+                    bucket["rpe_values"].append(orm_set.rpe)
+                if orm_set.rir is not None:
+                    bucket["rir_values"].append(orm_set.rir)
+
+            for bucket in by_exercise.values():
+                rpe_values = bucket.pop("rpe_values")
+                rir_values = bucket.pop("rir_values")
+                bucket["volume"] = float(bucket["volume"])
+                bucket["max_weight"] = float(bucket["max_weight"])
+                bucket["avg_rpe"] = round(sum(rpe_values) / len(rpe_values), 2) if rpe_values else None
+                bucket["avg_rir"] = round(sum(rir_values) / len(rir_values), 2) if rir_values else None
+                bucket["session_id"] = str(session.id)
+                bucket["date"] = session.started_at.isoformat()
+            session_rows.extend(by_exercise.values())
+
+        grouped = {}
+        for row in session_rows:
+            grouped.setdefault(row["exercise_id"], []).append(row)
+
+        result = []
+        for exercise_rows in grouped.values():
+            latest = exercise_rows[-1]
+            previous = exercise_rows[-2] if len(exercise_rows) > 1 else None
+            result.append({
+                "exercise_id": latest["exercise_id"],
+                "exercise_name": latest["exercise_name"],
+                "history": exercise_rows[-12:],
+                "latest": latest,
+                "previous": previous,
+                "change": {
+                    "volume": round(latest["volume"] - previous["volume"], 2) if previous else None,
+                    "max_weight": round(latest["max_weight"] - previous["max_weight"], 2) if previous else None,
+                    "max_reps": latest["max_reps"] - previous["max_reps"] if previous else None,
+                },
+            })
+        return result
+    finally:
+        db.close()
+
+@router.get("/workouts/volume/weekly/current")
+def get_current_weekly_muscle_volume():
+    db = SessionLocal()
+    try:
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        week_start = (now - timedelta(days=now.weekday())).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        week_end = week_start + timedelta(days=7)
+        profile_id = get_current_profile_id()
+        rows = get_muscle_sets_by_week(db, profile_id, week_start, week_end)
+
+        return {
+            "week_start": week_start.date().isoformat(),
+            "week_end": week_end.date().isoformat(),
+            "volumes": [
+                {"muscle": muscle, "sets": int(sets)}
+                for muscle, sets in rows
+            ],
+        }
+    finally:
+        db.close()
+
+
+@router.get("/workouts/history/detailed")
+def get_workout_history_detailed(
+    limit: int = 30,
+    db=Depends(get_db),
+    profile_id: str = Depends(get_current_profile_id),
+):
+    """يرجّع الجلسات المكتملة مع كل الـ sets في طلب واحد — لحل N+1 Query."""
+    from collections import defaultdict
+
+    # جيب آخر `limit` جلسة مكتملة
+    sessions = (
+        db.query(SessionTable)
+        .filter(
+            SessionTable.status == "COMPLETED",
+            SessionTable.profile_id == profile_id,
+        )
+        .order_by(SessionTable.started_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    if not sessions:
+        return []
+
+    session_ids = [s.id for s in sessions]
+
+    # جيب كل sets لهذي الجلسات في query واحدة
+    all_sets = (
+        db.query(SetTable, PerformedExerciseTable, ExerciseTable)
+        .join(PerformedExerciseTable, SetTable.performed_exercise_id == PerformedExerciseTable.id)
+        .join(ExerciseTable, PerformedExerciseTable.exercise_id == ExerciseTable.id)
+        .filter(PerformedExerciseTable.session_id.in_(session_ids))
+        .all()
+    )
+
+    # جمّع sets حسب session_id
+    sets_by_session = defaultdict(list)
+    for set_row, pe, ex in all_sets:
+        sets_by_session[pe.session_id].append({
+            "id": str(set_row.id),
+            "performed_exercise_id": str(set_row.performed_exercise_id),
+            "exercise_name": ex.name,
+            "set_order": set_row.set_order,
+            "weight": float(set_row.weight) if set_row.weight else 0,
+            "reps": set_row.reps,
+            "rpe": set_row.rpe,
+            "rir": set_row.rir,
+            "set_type": set_row.set_type,
+            "volume_kg": float(set_row.weight or 0) * (set_row.reps or 0),
+        })
+
+    # ابنِ الـ response
+    result = []
+    for sess in sessions:
+        s_sets = sets_by_session.get(sess.id, [])
+        total_volume = sum(s["volume_kg"] for s in s_sets)
+        result.append({
+            "session": {
+                "id": str(sess.id),
+                "status": sess.status,
+                "started_at": sess.started_at.isoformat() if sess.started_at else None,
+                "ended_at": sess.ended_at.isoformat() if sess.ended_at else None,
+                "notes": sess.notes,
+                "plan_id": str(sess.plan_id) if sess.plan_id else None,
+                "volume_kg": total_volume,
+                "sets_count": len(s_sets),
+                "duration_minutes": (
+                    int((sess.ended_at - sess.started_at).total_seconds() / 60)
+                    if sess.ended_at and sess.started_at else None
+                ),
+            },
+            "sets": s_sets,
+            "total_volume": total_volume,
+        })
+
+    return result
+
+
 @router.get("/workouts/{session_id}", response_model=ActiveSessionDTO)
 def get_workout(session_id: str):
     db = SessionLocal()
@@ -197,6 +395,28 @@ def get_workout(session_id: str):
 def add_set(session_id: str, req: AddSetRequest):
     db = SessionLocal()
     try:
+        if req.client_operation_id:
+            previous = db.query(ClientOperationTable).filter(
+                ClientOperationTable.operation_id == req.client_operation_id,
+                ClientOperationTable.operation_type == "add_set",
+            ).first()
+            if previous:
+                orm_set = db.query(SetTable).filter(SetTable.id == previous.resource_id).first()
+                if orm_set:
+                    owner = (db.query(SessionTable)
+                        .join(PerformedExerciseTable, PerformedExerciseTable.session_id == SessionTable.id)
+                        .filter(PerformedExerciseTable.id == str(orm_set.performed_exercise_id),
+                                SessionTable.id == session_id,
+                                SessionTable.profile_id == get_current_profile_id()).first())
+                    if owner is None:
+                        raise HTTPException(status_code=409, detail="Operation identifier belongs to a different request")
+                    pe = db.query(PerformedExerciseTable).filter(PerformedExerciseTable.id == str(orm_set.performed_exercise_id)).first()
+                    exercise_name = ""
+                    if pe:
+                        ex = db.query(ExerciseTable).filter(ExerciseTable.id == pe.exercise_id).first()
+                        exercise_name = ex.name if ex else ""
+                    return set_to_dto(orm_set, exercise_name)
+
         service = SessionService(db)
         orm_set = service.add_set(
             session_id=uuid.UUID(session_id),
@@ -206,8 +426,15 @@ def add_set(session_id: str, req: AddSetRequest):
             set_order=req.set_order,
             set_type=req.set_type,
             rpe=req.rpe,
+            rir=req.rir,
             notes=req.notes
         )
+        if req.client_operation_id:
+            db.add(ClientOperationTable(
+                operation_id=req.client_operation_id,
+                operation_type="add_set",
+                resource_id=str(orm_set.id),
+            ))
         db.commit()
         
         pe = db.query(PerformedExerciseTable).filter(PerformedExerciseTable.id == str(orm_set.performed_exercise_id)).first()
@@ -234,7 +461,8 @@ def update_set(set_id: str, req: UpdateSetRequest):
             weight=req.weight,
             reps=req.reps,
             set_type=req.set_type,
-            rpe=req.rpe
+            rpe=req.rpe,
+            rir=req.rir
         )
         db.commit()
         
@@ -325,5 +553,86 @@ def delete_workout(session_id: str):
     except ValueError as e:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    finally:
+        db.close()
+
+@router.post("/workouts/{session_id}/exercises", response_model=PerformedExerciseDTO)
+def add_exercise_to_session(session_id: str, req: AddExerciseToSessionRequest):
+    db = SessionLocal()
+    try:
+        service = SessionService(db)
+        performed = service.add_exercise_to_session(session_id, req.exercise_id)
+        db.commit()
+
+        exercise = db.query(ExerciseTable).filter(ExerciseTable.id == performed.exercise_id).first()
+
+        # هل هذا التمرين ضمن خطة هذه الجلسة أصلًا؟
+        session = db.query(SessionTable).filter(SessionTable.id == session_id).first()
+        is_planned = False
+        if session and session.plan_id:
+            is_planned = db.query(PlanExerciseTable).filter(
+                PlanExerciseTable.plan_id == session.plan_id,
+                PlanExerciseTable.exercise_id == performed.exercise_id
+            ).first() is not None
+
+        has_sets = db.query(SetTable).filter(
+            SetTable.performed_exercise_id == performed.id
+        ).count() > 0
+
+        return PerformedExerciseDTO(
+            id=str(performed.id),
+            exercise_id=str(performed.exercise_id),
+            exercise_name=exercise.name if exercise else "",
+            display_order=performed.display_order,
+            is_planned=is_planned,
+            has_sets=has_sets,
+        )
+    except ValueError as e:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    finally:
+        db.close()
+
+
+@router.get("/workouts/{session_id}/exercises", response_model=List[PerformedExerciseDTO])
+def get_session_exercises(session_id: str):
+    """
+    مصدر الحقيقة الوحيد لكل تمارين الجلسة (خطة + إضافية)، بدل أي اشتقاق
+    بالواجهة من الـ Sets. يُستدعى عند Resume أو عند فتح شاشة التسجيل.
+    """
+    db = SessionLocal()
+    try:
+        session = db.query(SessionTable).filter(SessionTable.id == session_id).first()
+        if not session:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+        planned_exercise_ids = set()
+        if session.plan_id:
+            rows = db.query(PlanExerciseTable.exercise_id).filter(
+                PlanExerciseTable.plan_id == session.plan_id
+            ).all()
+            planned_exercise_ids = {r[0] for r in rows}
+
+        performed_list = db.query(PerformedExerciseTable).filter(
+            PerformedExerciseTable.session_id == session_id
+        ).order_by(PerformedExerciseTable.display_order).all()
+
+        result = []
+        for pe in performed_list:
+            exercise = db.query(ExerciseTable).filter(ExerciseTable.id == pe.exercise_id).first()
+            has_sets = db.query(SetTable).filter(
+                SetTable.performed_exercise_id == pe.id
+            ).count() > 0
+
+            result.append(PerformedExerciseDTO(
+                id=str(pe.id),
+                exercise_id=str(pe.exercise_id),
+                exercise_name=exercise.name if exercise else "",
+                display_order=pe.display_order,
+                is_planned=pe.exercise_id in planned_exercise_ids,
+                has_sets=has_sets,
+            ))
+
+        return result
     finally:
         db.close()

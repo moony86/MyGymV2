@@ -2,7 +2,7 @@ import uuid
 import uuid6
 from decimal import Decimal
 from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, ForeignKey, Text, Numeric, Index, UniqueConstraint
-from sqlalchemy.dialects.sqlite import TEXT  # لتخزين UUID كنص
+from sqlalchemy.dialects.sqlite import TEXT
 from sqlalchemy.orm import declarative_base, relationship
 from datetime import datetime, timezone
 from sqlalchemy.types import JSON
@@ -12,6 +12,17 @@ Base = declarative_base()
 
 def utc_now():
     return datetime.now(timezone.utc)
+
+DEFAULT_PROFILE_ID = "00000000-0000-0000-0000-000000000001"
+
+
+class ProfileTable(Base):
+    __tablename__ = "profiles"
+
+    id = Column(TEXT, primary_key=True)
+    name = Column(String(100), nullable=False)
+    created_at = Column(DateTime, nullable=False, default=utc_now)
+
 
 class ExerciseTable(Base):
     __tablename__ = "exercises"
@@ -25,25 +36,29 @@ class ExerciseTable(Base):
     difficulty = Column(String(50))
     is_active = Column(Boolean, default=True)
     aliases = Column(JSON, nullable=True)
+    knowledge_variant_id = Column(String(150), nullable=True, index=True)
+    image_url = Column(String(500), nullable=True)
+    brand = Column(String(100), nullable=True)
 
     __table_args__ = (
         Index('ix_exercises_name', 'name'),
     )
 
+
 class SessionTable(Base):
     __tablename__ = "sessions"
 
     id = Column(TEXT, primary_key=True, default=lambda: str(uuid6.uuid7()))
-
-    plan_id = Column(TEXT, ForeignKey("workout_plans.id", ondelete="SET NULL"),nullable=True)
-
-    plan = relationship("WorkoutPlanTable", back_populates="sessions")
+    plan_id = Column(TEXT, ForeignKey("workout_plans.id", ondelete="SET NULL"), nullable=True)
+    profile_id = Column(TEXT, ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False, index=True, default=DEFAULT_PROFILE_ID)
 
     status = Column(String(20), nullable=False, default=SessionStatus.ACTIVE.value)
     started_at = Column(DateTime, nullable=False, default=utc_now)
     ended_at = Column(DateTime, nullable=True)
     notes = Column(Text)
+
     # العلاقات
+    plan = relationship("WorkoutPlanTable", back_populates="sessions")
     performed_exercises = relationship("PerformedExerciseTable", back_populates="session", cascade="all, delete-orphan")
 
     __table_args__ = (
@@ -51,12 +66,13 @@ class SessionTable(Base):
         Index('ix_sessions_started_at', 'started_at'),
     )
 
+
 class PerformedExerciseTable(Base):
     __tablename__ = "performed_exercises"
 
     id = Column(TEXT, primary_key=True, default=lambda: str(uuid6.uuid7()))
-    session_id = Column(TEXT, ForeignKey("sessions.id"), nullable=False)
-    exercise_id = Column(TEXT, ForeignKey("exercises.id"), nullable=False)
+    session_id = Column(TEXT, ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False)
+    exercise_id = Column(TEXT, ForeignKey("exercises.id", ondelete="RESTRICT"), nullable=False)
     display_order = Column(Integer, default=0)
     notes = Column(Text)
     is_skipped = Column(Boolean, default=False)
@@ -71,15 +87,17 @@ class PerformedExerciseTable(Base):
         Index('ix_performed_exercises_session', 'session_id'),
     )
 
+
 class SetTable(Base):
     __tablename__ = "sets"
 
     id = Column(TEXT, primary_key=True, default=lambda: str(uuid6.uuid7()))
-    performed_exercise_id = Column(TEXT, ForeignKey("performed_exercises.id"), nullable=False)
+    performed_exercise_id = Column(TEXT, ForeignKey("performed_exercises.id", ondelete="CASCADE"), nullable=False)
     set_order = Column(Integer, default=0)
     weight = Column(Numeric(6, 2), nullable=False)
     reps = Column(Integer, nullable=False)
     rpe = Column(Float, nullable=True)
+    rir = Column(Integer, nullable=True)
     set_type = Column(String(20), nullable=False, default=SetType.WORKING.value)
 
     # العلاقات
@@ -89,10 +107,22 @@ class SetTable(Base):
         Index('ix_sets_performed_exercise', 'performed_exercise_id'),
         Index('ix_sets_set_type', 'set_type'),
     )
-    
-# ==================== =================== ====================
+
+
+class ClientOperationTable(Base):
+    __tablename__ = "client_operations"
+
+    operation_id = Column(TEXT, primary_key=True)
+    operation_type = Column(String(50), nullable=False)
+    resource_id = Column(TEXT, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=utc_now)
+
+    __table_args__ = (
+        Index('ix_client_operations_resource', 'resource_id'),
+    )
+
+
 # ==================== PLANNER MODELS (V2) ====================
-# ==================== =================== ====================
 
 class WorkoutPlanTable(Base):
     __tablename__ = "workout_plans"
@@ -102,11 +132,14 @@ class WorkoutPlanTable(Base):
     description = Column(Text, nullable=True)
     enabled = Column(Boolean, default=True)
     created_at = Column(DateTime, nullable=False, default=utc_now)
+    program_group_id = Column(TEXT, nullable=True, index=True)
+    day_index = Column(Integer, nullable=True)
+    profile_id = Column(TEXT, ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False, index=True, default=DEFAULT_PROFILE_ID)
 
     # العلاقات
     plan_exercises = relationship("PlanExerciseTable", back_populates="plan", cascade="all, delete-orphan")
     schedules = relationship("PlanScheduleTable", back_populates="plan", cascade="all, delete-orphan")
-    sessions = relationship("SessionTable",back_populates="plan")
+    sessions = relationship("SessionTable", back_populates="plan")
 
     __table_args__ = (
         Index('ix_workout_plans_name', 'name'),
@@ -121,12 +154,12 @@ class PlanExerciseTable(Base):
     plan_id = Column(TEXT, ForeignKey("workout_plans.id", ondelete="CASCADE"), nullable=False)
     exercise_id = Column(TEXT, ForeignKey("exercises.id", ondelete="CASCADE"), nullable=False)
     order_index = Column(Integer, nullable=False, default=0)
-    target_sets = Column(Integer, nullable=True)          # عدد المجموعات المخطط لها (إرشادي)
-    target_reps = Column(Integer, nullable=True)          # عدد العدات المستهدف (إرشادي)
-    target_weight_mode = Column(String(20), nullable=False, default="LAST_SESSION")  # 'LAST_SESSION', 'FIXED', 'EMPTY'
-    fixed_weight = Column(Numeric(6, 2), nullable=True)   # للوضع FIXED
-    fixed_reps = Column(Integer, nullable=True)           # للوضع FIXED
-    rest_seconds = Column(Integer, nullable=True)         # راحة مقترحة
+    target_sets = Column(Integer, nullable=True)
+    target_reps = Column(Integer, nullable=True)
+    target_weight_mode = Column(String(20), nullable=False, default="LAST_SESSION")
+    fixed_weight = Column(Numeric(6, 2), nullable=True)
+    fixed_reps = Column(Integer, nullable=True)
+    rest_seconds = Column(Integer, nullable=True)
 
     # العلاقات
     plan = relationship("WorkoutPlanTable", back_populates="plan_exercises")
@@ -144,10 +177,9 @@ class PlanScheduleTable(Base):
 
     id = Column(TEXT, primary_key=True, default=lambda: str(uuid6.uuid7()))
     plan_id = Column(TEXT, ForeignKey("workout_plans.id", ondelete="CASCADE"), nullable=False)
-    schedule_type = Column(String(20), nullable=False, default="manual")  # 'weekly', 'interval', 'manual'
-    interval_days = Column(Integer, nullable=True)          # إذا كان النوع interval
-    days_mask = Column(Integer, nullable=True)              # بت ماسك للأيام (الأحد=1، الاثنين=2، ...)
-    # يمكن إضافة حقل start_date أو وقت محدد لاحقاً
+    schedule_type = Column(String(20), nullable=False, default="manual")
+    interval_days = Column(Integer, nullable=True)
+    days_mask = Column(Integer, nullable=True)
 
     # العلاقات
     plan = relationship("WorkoutPlanTable", back_populates="schedules")
@@ -164,10 +196,88 @@ class ExerciseAlternativeTable(Base):
     exercise_id = Column(TEXT, ForeignKey("exercises.id", ondelete="CASCADE"), nullable=False)
     alternative_exercise_id = Column(TEXT, ForeignKey("exercises.id", ondelete="CASCADE"), nullable=False)
 
-    # العلاقات (اختيارية)
+    # العلاقات
     exercise = relationship("ExerciseTable", foreign_keys=[exercise_id])
     alternative = relationship("ExerciseTable", foreign_keys=[alternative_exercise_id])
 
     __table_args__ = (
         UniqueConstraint('exercise_id', 'alternative_exercise_id', name='uq_exercise_alternative'),
     )
+
+
+class TrainingProfileTable(Base):
+    __tablename__ = "training_profile"
+
+    id = Column(TEXT, primary_key=True, default=lambda: DEFAULT_PROFILE_ID)
+
+    sex = Column(String(10), nullable=False)
+    birth_year = Column(Integer, nullable=False)
+    height_cm = Column(Numeric(5, 2), nullable=False)
+    current_weight_kg = Column(Numeric(5, 2), nullable=False)
+
+    experience_level = Column(String(20), nullable=False)
+    training_days_per_week = Column(Integer, nullable=False)
+    session_duration_minutes = Column(Integer, nullable=False)
+    primary_goal = Column(String(30), nullable=False)
+
+    created_at = Column(DateTime, nullable=False, default=utc_now)
+    updated_at = Column(DateTime, nullable=False, default=utc_now, onupdate=utc_now)
+
+    __table_args__ = (
+        Index("ix_training_profile_updated_at", "updated_at"),
+    )
+
+
+class BodyMeasurementTable(Base):
+    __tablename__ = "body_measurements"
+
+    id = Column(TEXT, primary_key=True, default=lambda: str(uuid6.uuid7()))
+    profile_id = Column(TEXT, ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False, index=True)
+    date = Column(DateTime, nullable=False)
+    type = Column(String(10), nullable=False)
+    goal = Column(String(20), nullable=True)
+    weight = Column(Numeric(5, 2), nullable=True)
+    waist = Column(Numeric(5, 2), nullable=True)
+    narrow_waist = Column(Numeric(5, 2), nullable=True)
+    chest = Column(Numeric(5, 2), nullable=True)
+    hips = Column(Numeric(5, 2), nullable=True)
+    left_arm = Column(Numeric(5, 2), nullable=True)
+    right_arm = Column(Numeric(5, 2), nullable=True)
+    left_thigh = Column(Numeric(5, 2), nullable=True)
+    right_thigh = Column(Numeric(5, 2), nullable=True)
+    neck = Column(Numeric(5, 2), nullable=True)
+    body_fat = Column(Numeric(5, 2), nullable=True)
+    notes = Column(Text, nullable=True)
+    conditions = Column(JSON, nullable=True)
+    front_photo = Column(Text, nullable=True)
+    side_photo = Column(Text, nullable=True)
+    back_photo = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=utc_now)
+
+    __table_args__ = (
+        Index('ix_body_measurements_profile_date', 'profile_id', 'date'),
+    )
+class PlanOptionsTable(Base):
+    __tablename__ = 'plan_options'
+    plan_id = Column(TEXT, ForeignKey('workout_plans.id', ondelete='CASCADE'), primary_key=True)
+    payload = Column(Text, nullable=False, default='{}')
+
+class CoachingProfileTable(Base):
+    __tablename__='coaching_profiles'
+    profile_id=Column(TEXT,ForeignKey('profiles.id',ondelete='CASCADE'),primary_key=True)
+    payload=Column(Text,nullable=False)
+    updated_at=Column(DateTime,nullable=False,default=utc_now)
+
+class SessionReviewTable(Base):
+    __tablename__='session_reviews'
+    session_id=Column(TEXT,ForeignKey('sessions.id',ondelete='CASCADE'),primary_key=True)
+    profile_id=Column(TEXT,ForeignKey('profiles.id',ondelete='CASCADE'),nullable=False,index=True)
+    payload=Column(Text,nullable=False)
+    updated_at=Column(DateTime,nullable=False,default=utc_now)
+
+class ProductFeedbackTable(Base):
+    __tablename__='product_feedback'
+    id=Column(TEXT,primary_key=True,default=lambda:str(uuid6.uuid7()))
+    profile_id=Column(TEXT,ForeignKey('profiles.id',ondelete='CASCADE'),nullable=False,index=True)
+    payload=Column(Text,nullable=False)
+    created_at=Column(DateTime,nullable=False,default=utc_now)
